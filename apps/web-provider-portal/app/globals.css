@@ -1,0 +1,59 @@
+:root {
+  font-family: "Segoe UI", sans-serif;
+  background: #eef6f4;
+  color: #12343b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(15, 109, 97, 0.16), transparent 24%),
+    linear-gradient(180deg, #edf7f6 0%, #dce8e5 100%);
+}
+
+.shell {
+  padding: 48px 24px;
+}
+
+.masthead {
+  max-width: 760px;
+  margin-bottom: 32px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #0f6d61;
+}
+
+.masthead h1 {
+  margin: 0 0 12px;
+  font-size: clamp(2rem, 4vw, 3.75rem);
+}
+
+.copy {
+  line-height: 1.6;
+  max-width: 60ch;
+}
+
+.actions {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.card {
+  border-radius: 18px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(15, 109, 97, 0.14);
+}
+

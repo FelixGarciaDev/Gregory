@@ -1,0 +1,229 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [postgis, pg_trgm]
+}
+
+enum UserRole {
+  admin
+  provider_user
+}
+
+enum OrganizationType {
+  clinic
+  lab
+  imaging_center
+  hospital
+  other
+}
+
+enum TestCategory {
+  bloodwork
+  imaging
+  diagnostic
+  urinalysis
+  other
+}
+
+enum MembershipRole {
+  owner
+  manager
+  staff
+}
+
+enum VerificationSource {
+  admin_call
+  provider_update
+  manual
+  unknown
+}
+
+enum OfferStatus {
+  active
+  stale
+  inactive
+}
+
+model User {
+  id                  String                 @id @default(uuid())
+  email               String                 @unique
+  passwordHash        String                 @map("password_hash")
+  fullName            String                 @map("full_name")
+  role                UserRole
+  isActive            Boolean                @default(true) @map("is_active")
+  createdAt           DateTime               @default(now()) @map("created_at")
+  updatedAt           DateTime               @updatedAt @map("updated_at")
+  memberships         UserOrganizationRole[]
+  verifiedOffers      Offer[]
+  verifications       VerificationRecord[]
+  auditLogs           AuditLog[]
+
+  @@map("users")
+}
+
+model UserOrganizationRole {
+  id             String         @id @default(uuid())
+  userId         String         @map("user_id")
+  organizationId String         @map("organization_id")
+  role           MembershipRole
+  user           User           @relation(fields: [userId], references: [id])
+  organization   Organization   @relation(fields: [organizationId], references: [id])
+
+  @@unique([userId, organizationId])
+  @@map("user_organization_roles")
+}
+
+model Organization {
+  id          String                 @id @default(uuid())
+  name        String
+  type        OrganizationType
+  phone       String?
+  website     String?
+  isActive    Boolean                @default(true) @map("is_active")
+  createdAt   DateTime               @default(now()) @map("created_at")
+  updatedAt   DateTime               @updatedAt @map("updated_at")
+  locations   ProviderLocation[]
+  memberships UserOrganizationRole[]
+
+  @@map("organizations")
+}
+
+model ProviderLocation {
+  id              String                          @id @default(uuid())
+  organizationId  String                          @map("organization_id")
+  name            String?
+  addressLine1    String                          @map("address_line_1")
+  addressLine2    String?                         @map("address_line_2")
+  city            String
+  stateRegion     String                          @map("state_region")
+  country         String                          @default("VE")
+  postalCode      String?                         @map("postal_code")
+  latitude        Decimal                         @db.Decimal(10, 7)
+  longitude       Decimal                         @db.Decimal(10, 7)
+  geom            Unsupported("geography(Point, 4326)")
+  phone           String?
+  notes           String?
+  isActive        Boolean                         @default(true) @map("is_active")
+  createdAt       DateTime                        @default(now()) @map("created_at")
+  updatedAt       DateTime                        @updatedAt @map("updated_at")
+  organization    Organization                    @relation(fields: [organizationId], references: [id])
+  offers          Offer[]
+  operatingHours  OperatingHour[]
+  paymentMethods  ProviderLocationPaymentMethod[]
+
+  @@map("provider_locations")
+}
+
+model Test {
+  id               String       @id @default(uuid())
+  name             String
+  slug             String       @unique
+  category         TestCategory
+  description      String?
+  preparationNotes String?      @map("preparation_notes")
+  isActive         Boolean      @default(true) @map("is_active")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+  aliases          TestAlias[]
+  offers           Offer[]
+
+  @@map("tests")
+}
+
+model TestAlias {
+  id     String @id @default(uuid())
+  testId String @map("test_id")
+  alias  String
+  locale String @default("es-VE")
+  test   Test   @relation(fields: [testId], references: [id])
+
+  @@map("test_aliases")
+}
+
+model Offer {
+  id                  String                @id @default(uuid())
+  providerLocationId  String                @map("provider_location_id")
+  testId              String                @map("test_id")
+  priceAmount         Decimal               @map("price_amount") @db.Decimal(10, 2)
+  currencyCode        String                @map("currency_code")
+  priceNotes          String?               @map("price_notes")
+  turnaroundTime      String?               @map("turnaround_time")
+  requiresAppointment Boolean               @default(false) @map("requires_appointment")
+  walkInAllowed       Boolean               @default(true) @map("walk_in_allowed")
+  isAvailable         Boolean               @default(true) @map("is_available")
+  lastVerifiedAt      DateTime?             @map("last_verified_at")
+  verifiedByUserId    String?               @map("verified_by_user_id")
+  verificationSource  VerificationSource    @default(unknown) @map("verification_source")
+  publicStatus        OfferStatus           @default(active) @map("public_status")
+  createdAt           DateTime              @default(now()) @map("created_at")
+  updatedAt           DateTime              @updatedAt @map("updated_at")
+  providerLocation    ProviderLocation      @relation(fields: [providerLocationId], references: [id])
+  test                Test                  @relation(fields: [testId], references: [id])
+  verifiedByUser      User?                 @relation(fields: [verifiedByUserId], references: [id])
+  verificationRecords VerificationRecord[]
+
+  @@map("offers")
+}
+
+model PaymentMethod {
+  id        String                        @id @default(uuid())
+  code      String                        @unique
+  label     String
+  locations ProviderLocationPaymentMethod[]
+
+  @@map("payment_methods")
+}
+
+model ProviderLocationPaymentMethod {
+  id                String           @id @default(uuid())
+  providerLocationId String          @map("provider_location_id")
+  paymentMethodId   String           @map("payment_method_id")
+  providerLocation  ProviderLocation @relation(fields: [providerLocationId], references: [id])
+  paymentMethod     PaymentMethod    @relation(fields: [paymentMethodId], references: [id])
+
+  @@unique([providerLocationId, paymentMethodId])
+  @@map("provider_location_payment_methods")
+}
+
+model OperatingHour {
+  id                String           @id @default(uuid())
+  providerLocationId String          @map("provider_location_id")
+  dayOfWeek         Int              @map("day_of_week")
+  opensAt           String           @map("opens_at")
+  closesAt          String           @map("closes_at")
+  isClosed          Boolean          @default(false) @map("is_closed")
+  providerLocation  ProviderLocation @relation(fields: [providerLocationId], references: [id])
+
+  @@map("operating_hours")
+}
+
+model VerificationRecord {
+  id               String   @id @default(uuid())
+  offerId          String   @map("offer_id")
+  verifiedAt       DateTime @default(now()) @map("verified_at")
+  verifiedByUserId String   @map("verified_by_user_id")
+  method           String
+  notes            String?
+  offer            Offer    @relation(fields: [offerId], references: [id])
+  verifiedByUser   User     @relation(fields: [verifiedByUserId], references: [id])
+
+  @@map("verification_records")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  actorUserId String?  @map("actor_user_id")
+  action      String
+  targetType  String   @map("target_type")
+  targetId    String   @map("target_id")
+  beforeJson  Json?    @map("before_json")
+  afterJson   Json?    @map("after_json")
+  createdAt   DateTime @default(now()) @map("created_at")
+  actorUser   User?    @relation(fields: [actorUserId], references: [id])
+
+  @@map("audit_logs")
+}

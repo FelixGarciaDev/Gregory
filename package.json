@@ -1,0 +1,17 @@
+{
+  "name": "gregory",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.6.1",
+  "scripts": {
+    "dev:api": "pnpm --filter api dev",
+    "dev:web-admin": "pnpm --filter web-admin dev",
+    "dev:web-provider-portal": "pnpm --filter web-provider-portal dev",
+    "dev:worker": "pnpm --filter worker dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down"
+  }
+}
+

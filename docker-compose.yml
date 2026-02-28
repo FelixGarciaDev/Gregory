@@ -1,0 +1,67 @@
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: gregory-postgres
+    environment:
+      POSTGRES_DB: gregory
+      POSTGRES_USER: gregory
+      POSTGRES_PASSWORD: gregory
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infra/compose/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: gregory-api
+    environment:
+      PORT: 3000
+      DATABASE_URL: postgresql://gregory:gregory@postgres:5432/gregory?schema=public
+      JWT_SECRET: local-dev-secret
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+
+  web-admin:
+    build:
+      context: .
+      dockerfile: apps/web-admin/Dockerfile
+    container_name: gregory-web-admin
+    environment:
+      PORT: 3001
+      NEXT_PUBLIC_API_URL: http://localhost:3000/v1
+    ports:
+      - "3001:3001"
+    depends_on:
+      - api
+
+  web-provider-portal:
+    build:
+      context: .
+      dockerfile: apps/web-provider-portal/Dockerfile
+    container_name: gregory-web-provider
+    environment:
+      PORT: 3002
+      NEXT_PUBLIC_API_URL: http://localhost:3000/v1
+    ports:
+      - "3002:3002"
+    depends_on:
+      - api
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    container_name: gregory-worker
+    environment:
+      DATABASE_URL: postgresql://gregory:gregory@postgres:5432/gregory?schema=public
+    depends_on:
+      - postgres
+
+volumes:
+  postgres-data:
+
