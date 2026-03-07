@@ -10,4 +10,4 @@ build
 .env.local
 pnpm-lock.yaml
 apps/api/prisma/dev.db
-
+apps/android-consumer/local.properties
