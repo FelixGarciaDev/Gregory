@@ -3,14 +3,25 @@ services:
     image: postgis/postgis:16-3.4
     container_name: gregory-postgres
     environment:
-      POSTGRES_DB: gregory
-      POSTGRES_USER: gregory
-      POSTGRES_PASSWORD: gregory
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./infra/compose/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+  pgadmin:
+    image: dpage/pgadmin4:9.2
+    container_name: gregory-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
 
   api:
     build:
@@ -19,8 +30,8 @@ services:
     container_name: gregory-api
     environment:
       PORT: 3000
-      DATABASE_URL: postgresql://gregory:gregory@postgres:5432/gregory?schema=public
-      JWT_SECRET: local-dev-secret
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
     ports:
       - "3000:3000"
     depends_on:
@@ -58,10 +69,9 @@ services:
       dockerfile: apps/worker/Dockerfile
     container_name: gregory-worker
     environment:
-      DATABASE_URL: postgresql://gregory:gregory@postgres:5432/gregory?schema=public
+      DATABASE_URL: ${DATABASE_URL}
     depends_on:
       - postgres
 
 volumes:
   postgres-data:
-
