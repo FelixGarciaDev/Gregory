@@ -8,7 +8,7 @@ export class AuthController {
 
   @Post("login")
   login(@Body() body: LoginDto) {
-    return this.authService.login(body.email);
+    return this.authService.login(body.email, body.password);
   }
 
   @Post("refresh")
@@ -21,4 +21,3 @@ export class AuthController {
     return { message: "Logout acknowledged." };
   }
 }
-
