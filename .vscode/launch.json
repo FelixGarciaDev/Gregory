@@ -1,0 +1,65 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "API",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "pnpm dev:api",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Web Admin",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "pnpm dev:web-admin",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Provider Portal",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "pnpm dev:web-provider-portal",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Worker",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "pnpm dev:worker",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Open Admin In Chrome",
+      "type": "pwa-chrome",
+      "request": "launch",
+      "url": "http://localhost:3001",
+      "webRoot": "${workspaceFolder}/apps/web-admin"
+    },
+    {
+      "name": "Open Provider Portal In Chrome",
+      "type": "pwa-chrome",
+      "request": "launch",
+      "url": "http://localhost:3002",
+      "webRoot": "${workspaceFolder}/apps/web-provider-portal"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Admin Local Debug",
+      "configurations": [
+        "API",
+        "Web Admin",
+        "Open Admin In Chrome"
+      ]
+    },
+    {
+      "name": "Provider Local Debug",
+      "configurations": [
+        "API",
+        "Provider Portal",
+        "Open Provider Portal In Chrome"
+      ]
+    }
+  ]
+}
