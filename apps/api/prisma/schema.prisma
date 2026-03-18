@@ -11,7 +11,9 @@ datasource db {
 
 enum UserRole {
   admin
+  provider_admin
   provider_user
+  gregory_user
 }
 
 enum OrganizationType {

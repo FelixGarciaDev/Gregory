@@ -1,10 +1,20 @@
-import { Body, Controller, Param, Patch, Post } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post } from "@nestjs/common";
+import { AdminService } from "./admin.service";
+import { CreateProviderDto } from "./dto/create-provider.dto";
+import { CreateProviderUserDto } from "./dto/create-provider-user.dto";
 
 @Controller("admin")
 export class AdminController {
+  constructor(private readonly adminService: AdminService) {}
+
+  @Get("providers")
+  listProviders() {
+    return this.adminService.listProviders();
+  }
+
   @Post("providers")
-  createProvider(@Body() body: Record<string, unknown>) {
-    return { message: "Provider creation scaffolded.", body };
+  createProvider(@Body() body: CreateProviderDto) {
+    return this.adminService.createProvider(body);
   }
 
   @Patch("providers/:id")
@@ -53,8 +63,8 @@ export class AdminController {
   }
 
   @Post("provider-users")
-  createProviderUser(@Body() body: Record<string, unknown>) {
-    return { message: "Provider user creation scaffolded.", body };
+  createProviderUser(@Body() body: CreateProviderUserDto) {
+    return this.adminService.createProviderUser(body);
   }
 
   @Patch("provider-users/:id")
@@ -77,4 +87,3 @@ export class AdminController {
     return { message: "Offer CSV import hook scaffolded." };
   }
 }
-

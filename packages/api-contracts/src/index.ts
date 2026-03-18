@@ -8,7 +8,7 @@ export interface LoginRequest {
 export interface LoginResponse {
   accessToken: string;
   refreshToken: string;
-  role: "admin" | "provider_user";
+  role: "admin" | "provider_admin" | "provider_user" | "gregory_user";
 }
 
 export interface OfferSearchResponse {

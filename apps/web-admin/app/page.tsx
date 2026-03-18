@@ -1,12 +1,29 @@
+import Link from "next/link";
 import { logoutAction } from "./actions";
 import { requireAdminSession } from "../lib/auth";
 
 const cards = [
-  "Providers and branches",
-  "Canonical test catalog",
-  "Offers, prices, and hours",
-  "Payment methods and verification",
-  "Provider account assignment"
+  {
+    title: "Providers",
+    description: "Create providers and assign provider admins or provider users.",
+    href: "/providers"
+  },
+  {
+    title: "Canonical test catalog",
+    description: "Implement authenticated forms here and point them at the `/v1/admin/*` endpoints."
+  },
+  {
+    title: "Offers, prices, and hours",
+    description: "Implement authenticated forms here and point them at the `/v1/admin/*` endpoints."
+  },
+  {
+    title: "Payment methods and verification",
+    description: "Implement authenticated forms here and point them at the `/v1/admin/*` endpoints."
+  },
+  {
+    title: "Provider account assignment",
+    description: "Implement authenticated forms here and point them at the `/v1/admin/*` endpoints."
+  }
 ];
 
 export default async function AdminHome() {
@@ -50,10 +67,17 @@ export default async function AdminHome() {
 
       <section className="grid">
         {cards.map((card) => (
-          <article className="panel" key={card}>
-            <h2>{card}</h2>
-            <p>Implement authenticated forms here and point them at the `/v1/admin/*` endpoints.</p>
-          </article>
+          card.href ? (
+            <Link className="panel panel-link" href={card.href} key={card.title}>
+              <h2>{card.title}</h2>
+              <p>{card.description}</p>
+            </Link>
+          ) : (
+            <article className="panel" key={card.title}>
+              <h2>{card.title}</h2>
+              <p>{card.description}</p>
+            </article>
+          )
         ))}
       </section>
     </main>

@@ -1,4 +1,4 @@
-export type UserRole = "admin" | "provider_user";
+export type UserRole = "admin" | "provider_admin" | "provider_user" | "gregory_user";
 
 export type OrganizationType =
   | "clinic"
@@ -29,4 +29,3 @@ export interface SearchOffer {
   lastVerifiedAt: string | null;
   paymentMethods: string[];
 }
-
