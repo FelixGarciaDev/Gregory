@@ -1,3 +1,5 @@
+import { getSession } from "../../lib/auth";
+
 const API_BASE_URL = process.env.API_BASE_URL ?? "http://localhost:3000/v1";
 
 export type ProviderRecord = {
@@ -19,8 +21,17 @@ export type ProviderRecord = {
 };
 
 export async function getProviders() {
+  const session = await getSession();
+
+  if (!session) {
+    return [] as ProviderRecord[];
+  }
+
   try {
     const response = await fetch(`${API_BASE_URL}/admin/providers`, {
+      headers: {
+        Authorization: `Bearer ${session.token}`
+      },
       cache: "no-store"
     });
 

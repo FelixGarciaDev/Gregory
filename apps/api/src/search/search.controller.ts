@@ -1,7 +1,9 @@
 import { Controller, Get, Param, Query } from "@nestjs/common";
+import { Public } from "../authz/decorators/public.decorator";
 import { SearchService } from "./search.service";
 import { SearchQueryDto } from "./dto/search-query.dto";
 
+@Public()
 @Controller()
 export class SearchController {
   constructor(private readonly searchService: SearchService) {}
@@ -31,4 +33,3 @@ export class SearchController {
     return this.searchService.getOffer(offerId);
   }
 }
-

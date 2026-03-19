@@ -1,16 +1,26 @@
 import { logoutAction } from "./actions";
 import { requireProviderSession } from "../lib/auth";
-
-const actions = [
-  "Edit organization profile",
-  "Update locations and hours",
-  "Publish price changes",
-  "Manage availability",
-  "Review last verification timestamps"
-];
+import { getProviderWorkspace } from "./workspace-data";
 
 export default async function ProviderHome() {
   const session = await requireProviderSession();
+  const workspace = await getProviderWorkspace();
+  const isProviderAdmin = session.user.role === "provider_admin";
+  const actions = isProviderAdmin
+    ? [
+        "Edit organization profile",
+        "Update locations and hours",
+        "Publish price changes",
+        "Manage provider users",
+        "Review last verification timestamps"
+      ]
+    : [
+        "View organization profile",
+        "Review locations and hours",
+        "View prices and availability",
+        "Review provider users",
+        "Browse canonical tests"
+      ];
 
   return (
     <main className="shell page-shell">
@@ -20,8 +30,16 @@ export default async function ProviderHome() {
           <h1>Direct data control for labs and clinics</h1>
           <p className="copy">
             Signed in as <strong>{session.user.email}</strong> with the <strong>{session.user.role}</strong> role.
-            This shell is ready to connect provider users to `/v1/provider/*` endpoints so they can manage their own
-            listings directly.
+            {workspace ? (
+              <>
+                {" "}
+                You are scoped to <strong>{workspace.organization.name}</strong> with{" "}
+                <strong>{workspace.organization.locationCount}</strong> active locations and{" "}
+                <strong>{workspace.organization.userCount}</strong> active provider users.
+              </>
+            ) : (
+              " The provider API is available through the authenticated `/v1/provider/*` routes."
+            )}
           </p>
         </div>
 
@@ -36,7 +54,11 @@ export default async function ProviderHome() {
         {actions.map((action) => (
           <article className="card" key={action}>
             <h2>{action}</h2>
-            <p>Attach authenticated forms and optimistic updates here.</p>
+            <p>
+              {isProviderAdmin
+                ? "Attach authenticated provider-admin forms here."
+                : "Read-only provider users can review this data once the UI flow is attached."}
+            </p>
           </article>
         ))}
       </section>

@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { AuthzModule } from "./authz/authz.module";
 import { HealthController } from "./health.controller";
 import { AuthModule } from "./auth/auth.module";
 import { SearchModule } from "./search/search.module";
@@ -7,7 +8,7 @@ import { ProviderModule } from "./provider/provider.module";
 import { PrismaModule } from "./prisma/prisma.module";
 
 @Module({
-  imports: [PrismaModule, AuthModule, SearchModule, AdminModule, ProviderModule],
+  imports: [PrismaModule, AuthModule, AuthzModule, SearchModule, AdminModule, ProviderModule],
   controllers: [HealthController]
 })
 export class AppModule {}

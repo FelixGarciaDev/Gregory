@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { clearSession, createSession } from "../lib/auth";
+import { clearSession, createSession, getSession } from "../lib/auth";
 
 const API_BASE_URL = process.env.API_BASE_URL ?? "http://localhost:3000/v1";
 
@@ -61,6 +61,12 @@ export async function createProviderAction(
   _: AdminFormState,
   formData: FormData
 ): Promise<AdminFormState> {
+  const session = await getSession();
+
+  if (!session) {
+    return { error: "Your admin session has expired. Sign in again." };
+  }
+
   const name = String(formData.get("name") ?? "").trim();
   const type = String(formData.get("type") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
@@ -76,7 +82,8 @@ export async function createProviderAction(
     response = await fetch(`${API_BASE_URL}/admin/providers`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.token}`
       },
       body: JSON.stringify({
         name,
@@ -102,6 +109,12 @@ export async function createProviderUserAction(
   _: AdminFormState,
   formData: FormData
 ): Promise<AdminFormState> {
+  const session = await getSession();
+
+  if (!session) {
+    return { error: "Your admin session has expired. Sign in again." };
+  }
+
   const providerId = String(formData.get("providerId") ?? "").trim();
   const fullName = String(formData.get("fullName") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
@@ -118,7 +131,8 @@ export async function createProviderUserAction(
     response = await fetch(`${API_BASE_URL}/admin/provider-users`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.token}`
       },
       body: JSON.stringify({
         providerId,
