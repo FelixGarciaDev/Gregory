@@ -1,3 +1,6 @@
+import { logoutAction } from "./actions";
+import { requireProviderSession } from "../lib/auth";
+
 const actions = [
   "Edit organization profile",
   "Update locations and hours",
@@ -6,16 +9,27 @@ const actions = [
   "Review last verification timestamps"
 ];
 
-export default function ProviderHome() {
+export default async function ProviderHome() {
+  const session = await requireProviderSession();
+
   return (
-    <main className="shell">
-      <section className="masthead">
-        <p className="eyebrow">Provider Workspace</p>
-        <h1>Direct data control for labs and clinics</h1>
-        <p className="copy">
-          This shell is ready to connect provider users to `/v1/provider/*` endpoints so they can manage their own
-          listings directly.
-        </p>
+    <main className="shell page-shell">
+      <section className="masthead masthead-with-toolbar">
+        <div>
+          <p className="eyebrow">Provider Workspace</p>
+          <h1>Direct data control for labs and clinics</h1>
+          <p className="copy">
+            Signed in as <strong>{session.user.email}</strong> with the <strong>{session.user.role}</strong> role.
+            This shell is ready to connect provider users to `/v1/provider/*` endpoints so they can manage their own
+            listings directly.
+          </p>
+        </div>
+
+        <form action={logoutAction}>
+          <button className="secondary-button" type="submit">
+            Sign out
+          </button>
+        </form>
       </section>
 
       <section className="actions">
@@ -29,4 +43,3 @@ export default function ProviderHome() {
     </main>
   );
 }
-

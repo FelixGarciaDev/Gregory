@@ -16,13 +16,39 @@ body {
     linear-gradient(180deg, #edf7f6 0%, #dce8e5 100%);
 }
 
+.auth-shell,
+.page-shell,
 .shell {
   padding: 48px 24px;
+}
+
+.auth-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+}
+
+.auth-panel {
+  width: min(100%, 480px);
+  padding: 32px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(15, 109, 97, 0.14);
+  box-shadow: 0 12px 24px rgba(18, 52, 59, 0.08);
+  backdrop-filter: blur(10px);
 }
 
 .masthead {
   max-width: 760px;
   margin-bottom: 32px;
+}
+
+.masthead-with-toolbar {
+  max-width: none;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
 }
 
 .eyebrow {
@@ -44,6 +70,70 @@ body {
   max-width: 60ch;
 }
 
+.auth-copy {
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+.auth-form {
+  display: grid;
+  gap: 16px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.field input {
+  width: 100%;
+  border: 1px solid rgba(18, 52, 59, 0.14);
+  border-radius: 14px;
+  padding: 14px 16px;
+  font: inherit;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.field input:focus {
+  outline: 2px solid rgba(15, 109, 97, 0.24);
+  outline-offset: 2px;
+}
+
+.form-error {
+  margin: 0;
+  color: #9a2f2f;
+  font-size: 14px;
+}
+
+.primary-button,
+.secondary-button {
+  border: 0;
+  border-radius: 999px;
+  padding: 12px 18px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primary-button {
+  background: #12343b;
+  color: #eef6f4;
+}
+
+.secondary-button {
+  background: rgba(255, 255, 255, 0.75);
+  color: #12343b;
+  border: 1px solid rgba(15, 109, 97, 0.14);
+}
+
+.primary-button:disabled,
+.secondary-button:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
 .actions {
   display: grid;
   gap: 16px;
@@ -57,3 +147,18 @@ body {
   border: 1px solid rgba(15, 109, 97, 0.14);
 }
 
+@media (max-width: 720px) {
+  .auth-shell,
+  .page-shell,
+  .shell {
+    padding: 24px 16px;
+  }
+
+  .auth-panel {
+    padding: 24px;
+  }
+
+  .masthead-with-toolbar {
+    flex-direction: column;
+  }
+}
