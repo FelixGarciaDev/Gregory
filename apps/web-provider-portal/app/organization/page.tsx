@@ -2,8 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { logoutAction } from "../actions";
 import { requireProviderSession } from "../../lib/auth";
+import { getProviderLocations, getProviderWorkspace } from "../workspace-data";
+import { LocationForm } from "./location-form";
 import { OrganizationForm } from "./organization-form";
-import { getProviderWorkspace } from "../workspace-data";
 
 export default async function OrganizationPage() {
   const session = await requireProviderSession();
@@ -13,6 +14,7 @@ export default async function OrganizationPage() {
   }
 
   const workspace = await getProviderWorkspace();
+  const locations = await getProviderLocations();
 
   if (!workspace) {
     redirect("/");
@@ -43,9 +45,13 @@ export default async function OrganizationPage() {
         </div>
       </section>
 
-      <section className="single-panel">
+      <section className="organization-layout">
         <article className="card card-form">
           <OrganizationForm organization={workspace.organization} />
+        </article>
+
+        <article className="card card-form">
+          <LocationForm locations={locations} />
         </article>
       </section>
     </main>
