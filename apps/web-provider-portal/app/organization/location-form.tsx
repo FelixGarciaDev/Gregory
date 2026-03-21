@@ -155,6 +155,17 @@ function toLatLngLiteral(location: any) {
   return { lat, lng };
 }
 
+function parseCoordinate(value: string) {
+  const trimmedValue = value.trim();
+
+  if (!trimmedValue) {
+    return null;
+  }
+
+  const coordinate = Number(trimmedValue);
+  return Number.isFinite(coordinate) ? coordinate : null;
+}
+
 export function LocationForm({ locations }: { locations: ProviderLocation[] }) {
   const [state, formAction, pending] = useActionState(saveLocationAction, initialState);
   const primaryLocation = locations[0];
@@ -174,10 +185,10 @@ export function LocationForm({ locations }: { locations: ProviderLocation[] }) {
   }, [primaryLocation]);
 
   const mapCenter = useMemo(() => {
-    const latitude = Number(draft.latitude);
-    const longitude = Number(draft.longitude);
+    const latitude = parseCoordinate(draft.latitude);
+    const longitude = parseCoordinate(draft.longitude);
 
-    if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+    if (latitude !== null && longitude !== null) {
       return { lat: latitude, lng: longitude };
     }
 
@@ -203,7 +214,7 @@ export function LocationForm({ locations }: { locations: ProviderLocation[] }) {
 
         const map = new google.maps.Map(mapElementRef.current, {
           center: mapCenter,
-          zoom: draft.latitude && draft.longitude ? 15 : 7,
+          zoom: draft.latitude && draft.longitude ? 25 : 12,
           streetViewControl: false,
           mapTypeControl: false,
           fullscreenControl: false
@@ -339,10 +350,10 @@ export function LocationForm({ locations }: { locations: ProviderLocation[] }) {
       return;
     }
 
-    const latitude = Number(draft.latitude);
-    const longitude = Number(draft.longitude);
+    const latitude = parseCoordinate(draft.latitude);
+    const longitude = parseCoordinate(draft.longitude);
 
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    if (latitude === null || longitude === null) {
       return;
     }
 
