@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { logoutAction } from "./actions";
 import { requireProviderSession } from "../lib/auth";
 import { getProviderWorkspace } from "./workspace-data";
@@ -8,7 +9,6 @@ export default async function ProviderHome() {
   const isProviderAdmin = session.user.role === "provider_admin";
   const actions = isProviderAdmin
     ? [
-        "Edit organization profile",
         "Update locations and hours",
         "Publish price changes",
         "Manage provider users",
@@ -51,6 +51,13 @@ export default async function ProviderHome() {
       </section>
 
       <section className="actions">
+        {isProviderAdmin ? (
+          <Link className="card card-accent card-link" href="/organization">
+            <h2>Edit organization profile</h2>
+            <p>Update provider name, type, phone, and website for your scoped organization.</p>
+          </Link>
+        ) : null}
+
         {actions.map((action) => (
           <article className="card" key={action}>
             <h2>{action}</h2>

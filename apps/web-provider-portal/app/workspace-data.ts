@@ -12,6 +12,8 @@ export type ProviderWorkspace = {
     id: string;
     name: string;
     type: string;
+    phone: string | null;
+    website: string | null;
     locationCount: number;
     userCount: number;
   };
