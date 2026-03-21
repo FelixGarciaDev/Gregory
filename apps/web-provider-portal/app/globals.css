@@ -280,12 +280,83 @@ body {
   grid-column: span 2;
 }
 
-.google-autocomplete-host {
-  width: 100%;
+.place-search {
+  position: relative;
 }
 
-.google-autocomplete-host gmp-place-autocomplete {
+.place-search-input {
   width: 100%;
+  border: 1px solid rgba(18, 52, 59, 0.14);
+  border-radius: 14px;
+  padding: 14px 16px;
+  font: inherit;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.place-search-input:focus {
+  outline: 2px solid rgba(15, 109, 97, 0.24);
+  outline-offset: 2px;
+}
+
+.place-search-dropdown {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  overflow: hidden;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(15, 109, 97, 0.16);
+  box-shadow: 0 20px 40px rgba(18, 52, 59, 0.16);
+}
+
+.place-search-results {
+  margin: 0;
+  padding: 8px;
+  list-style: none;
+}
+
+.place-search-option {
+  width: 100%;
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  text-align: left;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: #12343b;
+  cursor: pointer;
+}
+
+.place-search-option:hover,
+.place-search-option:focus-visible {
+  background: rgba(15, 109, 97, 0.1);
+  outline: none;
+}
+
+.place-search-option-title {
+  font-weight: 700;
+}
+
+.place-search-option-copy,
+.place-search-meta,
+.place-search-footer {
+  font-size: 13px;
+  color: rgba(18, 52, 59, 0.72);
+}
+
+.place-search-meta,
+.place-search-footer {
+  margin: 0;
+  padding: 12px 16px;
+}
+
+.place-search-footer {
+  border-top: 1px solid rgba(15, 109, 97, 0.1);
+  text-align: right;
+  font-weight: 700;
 }
 
 .map-shell {

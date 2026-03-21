@@ -31,6 +31,14 @@ type LocationDraft = {
 
 type LocationStatus = "manual" | "google" | "map";
 
+type PlaceSuggestionItem = {
+  id: string;
+  fullText: string;
+  primaryText: string;
+  secondaryText: string;
+  placePrediction: any;
+};
+
 function toDraft(location?: ProviderLocation): LocationDraft {
   return {
     locationId: location?.id ?? "",
@@ -53,7 +61,7 @@ function loadGoogleMaps(apiKey: string) {
     return Promise.resolve(null);
   }
 
-  if (window.google?.maps?.Map && window.google?.maps?.places?.PlaceAutocompleteElement) {
+  if (window.google?.maps?.Map && window.google?.maps?.places) {
     return Promise.resolve(window.google);
   }
 
@@ -94,7 +102,7 @@ function waitForGoogleMaps(timeoutMs = 10000) {
     const startedAt = Date.now();
 
     const check = () => {
-      if (window.google?.maps?.Map && window.google?.maps?.places?.PlaceAutocompleteElement) {
+      if (window.google?.maps?.Map && window.google?.maps?.places) {
         resolve(window.google);
         return;
       }
@@ -109,6 +117,24 @@ function waitForGoogleMaps(timeoutMs = 10000) {
 
     check();
   });
+}
+
+async function loadPlacesDataApi(google: any) {
+  if (typeof google.maps.importLibrary === "function") {
+    const placesLibrary = await google.maps.importLibrary("places");
+
+    return {
+      AutocompleteSessionToken:
+        placesLibrary.AutocompleteSessionToken ?? google.maps.places.AutocompleteSessionToken,
+      AutocompleteSuggestion:
+        placesLibrary.AutocompleteSuggestion ?? google.maps.places.AutocompleteSuggestion
+    };
+  }
+
+  return {
+    AutocompleteSessionToken: google.maps.places.AutocompleteSessionToken,
+    AutocompleteSuggestion: google.maps.places.AutocompleteSuggestion
+  };
 }
 
 function parseAddressComponent(components: any[], type: string, useShortName = false) {
@@ -166,17 +192,38 @@ function parseCoordinate(value: string) {
   return Number.isFinite(coordinate) ? coordinate : null;
 }
 
+function getSuggestionLabel(prediction: any) {
+  const text = prediction?.text?.toString?.() ?? "";
+  const mainText = prediction?.mainText?.toString?.() ?? text;
+  const secondaryText = prediction?.secondaryText?.toString?.() ?? "";
+
+  return {
+    fullText: text,
+    primaryText: mainText,
+    secondaryText
+  };
+}
+
 export function LocationForm({ locations }: { locations: ProviderLocation[] }) {
   const [state, formAction, pending] = useActionState(saveLocationAction, initialState);
   const primaryLocation = locations[0];
   const [draft, setDraft] = useState<LocationDraft>(() => toDraft(primaryLocation));
-  const [status, setStatus] = useState<LocationStatus>(primaryLocation ? "manual" : "manual");
+  const [status, setStatus] = useState<LocationStatus>("manual");
   const [mapsMessage, setMapsMessage] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchMessage, setSearchMessage] = useState("");
+  const [suggestions, setSuggestions] = useState<PlaceSuggestionItem[]>([]);
   const mapElementRef = useRef<HTMLDivElement | null>(null);
-  const autocompleteHostRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
+  const googleRef = useRef<any>(null);
+  const placesApiRef = useRef<{ AutocompleteSessionToken: any; AutocompleteSuggestion: any } | null>(null);
   const googleReadyRef = useRef(false);
+  const sessionTokenRef = useRef<any>(null);
+  const blurTimeoutRef = useRef<number | null>(null);
+  const searchRequestRef = useRef(0);
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
 
   useEffect(() => {
@@ -202,14 +249,18 @@ export function LocationForm({ locations }: { locations: ProviderLocation[] }) {
     }
 
     let cancelled = false;
-    let placeAutocomplete: HTMLElement | null = null;
-    let handlePlaceSelection: ((event: Event) => Promise<void>) | null = null;
 
     loadGoogleMaps(apiKey)
       .then(() => waitForGoogleMaps())
-      .then((google) => {
-        if (cancelled || !google || !mapElementRef.current || !autocompleteHostRef.current) {
+      .then(async (google) => {
+        if (cancelled || !google || !mapElementRef.current) {
           return;
+        }
+
+        const placesApi = await loadPlacesDataApi(google);
+
+        if (!placesApi.AutocompleteSessionToken || !placesApi.AutocompleteSuggestion) {
+          throw new Error("Google Places Autocomplete Data API is unavailable for this key.");
         }
 
         const map = new google.maps.Map(mapElementRef.current, {
@@ -259,71 +310,8 @@ export function LocationForm({ locations }: { locations: ProviderLocation[] }) {
           setStatus("map");
         });
 
-        autocompleteHostRef.current.replaceChildren();
-
-        const placeAutocompleteElement = new google.maps.places.PlaceAutocompleteElement({
-          includedRegionCodes: ["VE"]
-        });
-        placeAutocompleteElement.setAttribute("placeholder", "Av. Principal, Caracas");
-        placeAutocomplete = placeAutocompleteElement;
-
-        handlePlaceSelection = async (event: Event) => {
-          const customEvent = event as CustomEvent<{ placePrediction?: { toPlace?: () => any } }>;
-          const place = customEvent.detail?.placePrediction?.toPlace?.();
-
-          if (!place) {
-            return;
-          }
-
-          await place.fetchFields({
-            fields: ["displayName", "formattedAddress", "location", "viewport", "addressComponents"]
-          });
-
-          const position = toLatLngLiteral(place.location);
-          const components = place.addressComponents ?? [];
-
-          if (!position) {
-            return;
-          }
-
-          const locality = parseAddressComponent(components, "locality");
-          const adminAreaLevel2 = parseAddressComponent(components, "administrative_area_level_2");
-          const stateRegion = parseAddressComponent(components, "administrative_area_level_1");
-          const streetNumber = parseAddressComponent(components, "street_number");
-          const route = parseAddressComponent(components, "route");
-          const neighborhood =
-            parseAddressComponent(components, "sublocality") ||
-            parseAddressComponent(components, "neighborhood");
-          const country = parseAddressComponent(components, "country", true) || "VE";
-          const postalCode = parseAddressComponent(components, "postal_code");
-          const addressLine1 = [route, streetNumber].filter(Boolean).join(" ").trim();
-
-          marker.setPosition(position);
-          if (place.viewport) {
-            map.fitBounds(place.viewport);
-          } else {
-            map.panTo(position);
-            map.setZoom(16);
-          }
-
-          setDraft((current) => ({
-            ...current,
-            name: current.name || place.displayName || "",
-            addressLine1: addressLine1 || place.formattedAddress || current.addressLine1,
-            city: locality || adminAreaLevel2 || current.city,
-            stateRegion: stateRegion || current.stateRegion,
-            country,
-            postalCode: postalCode || current.postalCode,
-            latitude: position.lat.toFixed(7),
-            longitude: position.lng.toFixed(7),
-            addressLine2: current.addressLine2 || neighborhood
-          }));
-          setStatus("google");
-        };
-
-        placeAutocompleteElement.addEventListener("gmp-select", handlePlaceSelection as EventListener);
-        autocompleteHostRef.current.appendChild(placeAutocompleteElement);
-
+        googleRef.current = google;
+        placesApiRef.current = placesApi;
         mapRef.current = map;
         markerRef.current = marker;
         googleReadyRef.current = true;
@@ -338,10 +326,7 @@ export function LocationForm({ locations }: { locations: ProviderLocation[] }) {
     return () => {
       cancelled = true;
       googleReadyRef.current = false;
-      if (placeAutocomplete && handlePlaceSelection) {
-        placeAutocomplete.removeEventListener("gmp-select", handlePlaceSelection as EventListener);
-      }
-      autocompleteHostRef.current?.replaceChildren();
+      placesApiRef.current = null;
     };
   }, [apiKey]);
 
@@ -350,10 +335,10 @@ export function LocationForm({ locations }: { locations: ProviderLocation[] }) {
       return;
     }
 
-    const latitude = parseCoordinate(draft.latitude);
-    const longitude = parseCoordinate(draft.longitude);
+    const latitude = Number(draft.latitude);
+    const longitude = Number(draft.longitude);
 
-    if (latitude === null || longitude === null) {
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
       return;
     }
 
@@ -362,7 +347,159 @@ export function LocationForm({ locations }: { locations: ProviderLocation[] }) {
     mapRef.current.setCenter(position);
   }, [draft.latitude, draft.longitude]);
 
+  useEffect(() => {
+    if (!googleReadyRef.current || !placesApiRef.current) {
+      return;
+    }
+
+    const query = searchQuery.trim();
+
+    if (query.length < 2) {
+      searchRequestRef.current += 1;
+      setIsSearching(false);
+      setSearchMessage("");
+      setSuggestions([]);
+      if (!query) {
+        sessionTokenRef.current = null;
+      }
+      return;
+    }
+
+    setIsSearching(true);
+    setSearchMessage("");
+    const requestId = ++searchRequestRef.current;
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const { AutocompleteSessionToken, AutocompleteSuggestion } = placesApiRef.current!;
+
+        if (!sessionTokenRef.current) {
+          sessionTokenRef.current = new AutocompleteSessionToken();
+        }
+
+        const request: Record<string, unknown> = {
+          input: query,
+          language: "es",
+          region: "ve",
+          sessionToken: sessionTokenRef.current
+        };
+
+        const latitude = parseCoordinate(draft.latitude) ?? DEFAULT_CENTER.lat;
+        const longitude = parseCoordinate(draft.longitude) ?? DEFAULT_CENTER.lng;
+
+        request.origin = { lat: latitude, lng: longitude };
+        request.locationBias = {
+          center: { lat: latitude, lng: longitude },
+          radius: 50_000
+        };
+
+        const response = await AutocompleteSuggestion.fetchAutocompleteSuggestions(request);
+
+        if (requestId !== searchRequestRef.current) {
+          return;
+        }
+
+        const nextSuggestions = (response.suggestions ?? response.placePredictions ?? [])
+          .map((suggestion: any) => {
+            const prediction = suggestion.placePrediction;
+
+            if (!prediction) {
+              return null;
+            }
+
+            const label = getSuggestionLabel(prediction);
+
+            return {
+              id: prediction.placeId ?? label.fullText,
+              fullText: label.fullText,
+              primaryText: label.primaryText,
+              secondaryText: label.secondaryText,
+              placePrediction: prediction
+            } satisfies PlaceSuggestionItem;
+          })
+          .filter(Boolean) as PlaceSuggestionItem[];
+
+        setSuggestions(nextSuggestions);
+        setIsSearching(false);
+        setSearchMessage(nextSuggestions.length === 0 ? "No Google suggestions for this search yet." : "");
+      } catch (error) {
+        if (requestId === searchRequestRef.current) {
+          console.error("Google autocomplete request failed.", error);
+          setSuggestions([]);
+          setIsSearching(false);
+          setSearchMessage("Google autocomplete request failed. Check the browser console and API setup.");
+        }
+      }
+    }, 220);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [draft.latitude, draft.longitude, searchQuery]);
+
+  useEffect(() => {
+    return () => {
+      if (blurTimeoutRef.current) {
+        window.clearTimeout(blurTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  async function handleSuggestionSelect(suggestion: PlaceSuggestionItem) {
+    const place = suggestion.placePrediction.toPlace();
+
+    await place.fetchFields({
+      fields: ["displayName", "formattedAddress", "location", "viewport", "addressComponents"]
+    });
+
+    const position = toLatLngLiteral(place.location);
+    const components = place.addressComponents ?? [];
+
+    if (!position || !mapRef.current || !markerRef.current) {
+      return;
+    }
+
+    const locality = parseAddressComponent(components, "locality");
+    const adminAreaLevel2 = parseAddressComponent(components, "administrative_area_level_2");
+    const stateRegion = parseAddressComponent(components, "administrative_area_level_1");
+    const streetNumber = parseAddressComponent(components, "street_number");
+    const route = parseAddressComponent(components, "route");
+    const neighborhood =
+      parseAddressComponent(components, "sublocality") || parseAddressComponent(components, "neighborhood");
+    const country = parseAddressComponent(components, "country", true) || "VE";
+    const postalCode = parseAddressComponent(components, "postal_code");
+    const addressLine1 = [route, streetNumber].filter(Boolean).join(" ").trim();
+
+    markerRef.current.setPosition(position);
+
+    if (place.viewport) {
+      mapRef.current.fitBounds(place.viewport);
+    } else {
+      mapRef.current.panTo(position);
+      mapRef.current.setZoom(16);
+    }
+
+    setDraft((current) => ({
+      ...current,
+      name: current.name || place.displayName || "",
+      addressLine1: addressLine1 || place.formattedAddress || current.addressLine1,
+      city: locality || adminAreaLevel2 || current.city,
+      stateRegion: stateRegion || current.stateRegion,
+      country,
+      postalCode: postalCode || current.postalCode,
+      latitude: position.lat.toFixed(7),
+      longitude: position.lng.toFixed(7),
+      addressLine2: current.addressLine2 || neighborhood
+    }));
+    setSearchQuery(place.formattedAddress || suggestion.fullText);
+    setSuggestions([]);
+    setIsSearchFocused(false);
+    setIsSearching(false);
+    setStatus("google");
+    sessionTokenRef.current = null;
+  }
+
   const otherLocations = extraLocations(primaryLocation?.id ?? "", locations);
+  const showSuggestions = isSearchFocused && (isSearching || suggestions.length > 0 || searchQuery.trim().length >= 2);
 
   return (
     <div className="location-panel">
@@ -397,7 +534,61 @@ export function LocationForm({ locations }: { locations: ProviderLocation[] }) {
 
         <label className="field">
           <span>Search address with Google</span>
-          <div className="google-autocomplete-host" ref={autocompleteHostRef} />
+          <div className="place-search">
+            <input
+              className="place-search-input"
+              type="text"
+              value={searchQuery}
+              onChange={(event) => {
+                setSearchQuery(event.target.value);
+                setIsSearchFocused(true);
+                setStatus("manual");
+              }}
+              onFocus={() => {
+                if (blurTimeoutRef.current) {
+                  window.clearTimeout(blurTimeoutRef.current);
+                }
+                setIsSearchFocused(true);
+              }}
+              onBlur={() => {
+                blurTimeoutRef.current = window.setTimeout(() => setIsSearchFocused(false), 140);
+              }}
+              placeholder="Av. Principal, Caracas"
+              autoComplete="off"
+            />
+
+            {showSuggestions ? (
+              <div className="place-search-dropdown">
+                {isSearching ? <p className="place-search-meta">Searching in Google Maps...</p> : null}
+
+                {!isSearching && suggestions.length === 0 ? (
+                  <p className="place-search-meta">{searchMessage || "No Google suggestions for this search yet."}</p>
+                ) : null}
+
+                {suggestions.length > 0 ? (
+                  <ul className="place-search-results">
+                    {suggestions.map((suggestion) => (
+                      <li key={suggestion.id}>
+                        <button
+                          className="place-search-option"
+                          type="button"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => void handleSuggestionSelect(suggestion)}
+                        >
+                          <span className="place-search-option-title">{suggestion.primaryText}</span>
+                          {suggestion.secondaryText ? (
+                            <span className="place-search-option-copy">{suggestion.secondaryText}</span>
+                          ) : null}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+
+                <div className="place-search-footer">Powered by Google</div>
+              </div>
+            ) : null}
+          </div>
         </label>
 
         <div className="location-grid">
