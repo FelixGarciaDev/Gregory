@@ -1,8 +1,11 @@
 import { Body, Controller, Get, Param, Patch, Post } from "@nestjs/common";
+import { UserRole } from "@prisma/client";
+import { Roles } from "../authz/decorators/roles.decorator";
 import { AdminService } from "./admin.service";
 import { CreateProviderDto } from "./dto/create-provider.dto";
 import { CreateProviderUserDto } from "./dto/create-provider-user.dto";
 
+@Roles(UserRole.admin)
 @Controller("admin")
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
