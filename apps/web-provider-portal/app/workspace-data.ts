@@ -19,6 +19,25 @@ export type ProviderWorkspace = {
   };
 };
 
+export type ProviderLocation = {
+  id: string;
+  organizationId: string;
+  name: string | null;
+  addressLine1: string;
+  addressLine2: string | null;
+  city: string;
+  stateRegion: string;
+  country: string;
+  postalCode: string | null;
+  latitude: string;
+  longitude: string;
+  phone: string | null;
+  notes: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export async function getProviderWorkspace() {
   const session = await getSession();
 
@@ -41,5 +60,31 @@ export async function getProviderWorkspace() {
     return (await response.json()) as ProviderWorkspace;
   } catch {
     return null;
+  }
+}
+
+export async function getProviderLocations() {
+  const session = await getSession();
+
+  if (!session) {
+    return [] as ProviderLocation[];
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/provider/locations`, {
+      headers: {
+        Authorization: `Bearer ${session.token}`
+      },
+      cache: "no-store"
+    });
+
+    if (!response.ok) {
+      return [] as ProviderLocation[];
+    }
+
+    const data = (await response.json()) as { items?: ProviderLocation[] };
+    return data.items ?? [];
+  } catch {
+    return [] as ProviderLocation[];
   }
 }
