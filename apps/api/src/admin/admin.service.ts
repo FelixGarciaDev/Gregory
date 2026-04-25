@@ -1,5 +1,5 @@
 import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
-import { MembershipRole, UserRole } from "@prisma/client";
+import { MembershipRole, Prisma, UserRole } from "@prisma/client";
 import { randomBytes, scryptSync } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateProviderDto } from "./dto/create-provider.dto";
@@ -72,6 +72,114 @@ export class AdminService {
     return provider;
   }
 
+  async getProvider(id: string) {
+    const provider = await this.prisma.organization.findUnique({
+      where: { id },
+      include: {
+        memberships: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                fullName: true,
+                role: true,
+                isActive: true
+              }
+            }
+          }
+        },
+        locations: {
+          orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+          select: {
+            id: true,
+            organizationId: true,
+            name: true,
+            addressLine1: true,
+            addressLine2: true,
+            city: true,
+            stateRegion: true,
+            country: true,
+            postalCode: true,
+            latitude: true,
+            longitude: true,
+            phone: true,
+            notes: true,
+            isActive: true,
+            createdAt: true,
+            updatedAt: true,
+            operatingHours: {
+              orderBy: [{ dayOfWeek: "asc" }, { opensAt: "asc" }],
+              select: {
+                id: true,
+                dayOfWeek: true,
+                opensAt: true,
+                closesAt: true,
+                isClosed: true
+              }
+            },
+            paymentMethods: {
+              include: {
+                paymentMethod: {
+                  select: {
+                    id: true,
+                    code: true,
+                    label: true
+                  }
+                }
+              }
+            },
+            offers: {
+              orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+              include: {
+                test: {
+                  select: {
+                    id: true,
+                    name: true,
+                    slug: true,
+                    category: true,
+                    description: true,
+                    preparationNotes: true,
+                    isActive: true
+                  }
+                },
+                verifiedByUser: {
+                  select: {
+                    id: true,
+                    email: true,
+                    fullName: true,
+                    role: true,
+                    isActive: true
+                  }
+                },
+                verificationRecords: {
+                  orderBy: [{ verifiedAt: "desc" }, { id: "asc" }],
+                  include: {
+                    verifiedByUser: {
+                      select: {
+                        id: true,
+                        email: true,
+                        fullName: true,
+                        role: true,
+                        isActive: true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!provider) {
+      throw new NotFoundException("Provider not found.");
+    }
+
+    return this.mapProviderSnapshot(provider);
+  }
+
   async createProviderUser(input: CreateProviderUserDto) {
     if (input.role !== UserRole.provider_admin && input.role !== UserRole.provider_user) {
       throw new ConflictException("Provider users must use the provider_admin or provider_user role.");
@@ -135,5 +243,218 @@ export class AdminService {
 
   private defaultMembershipRoleFor(role: UserRole) {
     return role === UserRole.provider_admin ? MembershipRole.manager : MembershipRole.staff;
+  }
+
+  private mapProviderSnapshot(provider: {
+    id: string;
+    name: string;
+    type: string;
+    phone: string | null;
+    website: string | null;
+    isActive: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+    memberships: Array<{
+      role: MembershipRole;
+      user: {
+        id: string;
+        email: string;
+        fullName: string;
+        role: UserRole;
+        isActive: boolean;
+      };
+    }>;
+    locations: Array<{
+      id: string;
+      organizationId: string;
+      name: string | null;
+      addressLine1: string;
+      addressLine2: string | null;
+      city: string;
+      stateRegion: string;
+      country: string;
+      postalCode: string | null;
+      latitude: Prisma.Decimal;
+      longitude: Prisma.Decimal;
+      phone: string | null;
+      notes: string | null;
+      isActive: boolean;
+      createdAt: Date;
+      updatedAt: Date;
+      operatingHours: Array<{
+        id: string;
+        dayOfWeek: number;
+        opensAt: string;
+        closesAt: string;
+        isClosed: boolean;
+      }>;
+      paymentMethods: Array<{
+        id: string;
+        paymentMethod: {
+          id: string;
+          code: string;
+          label: string;
+        };
+      }>;
+      offers: Array<{
+        id: string;
+        providerLocationId: string;
+        testId: string;
+        priceAmount: Prisma.Decimal;
+        currencyCode: string;
+        priceNotes: string | null;
+        turnaroundTime: string | null;
+        requiresAppointment: boolean;
+        walkInAllowed: boolean;
+        isAvailable: boolean;
+        lastVerifiedAt: Date | null;
+        verifiedByUserId: string | null;
+        verificationSource: string;
+        publicStatus: string;
+        createdAt: Date;
+        updatedAt: Date;
+        test: {
+          id: string;
+          name: string;
+          slug: string;
+          category: string;
+          description: string | null;
+          preparationNotes: string | null;
+          isActive: boolean;
+        };
+        verifiedByUser: {
+          id: string;
+          email: string;
+          fullName: string;
+          role: UserRole;
+          isActive: boolean;
+        } | null;
+        verificationRecords: Array<{
+          id: string;
+          offerId: string;
+          verifiedAt: Date;
+          verifiedByUserId: string;
+          method: string;
+          notes: string | null;
+          verifiedByUser: {
+            id: string;
+            email: string;
+            fullName: string;
+            role: UserRole;
+            isActive: boolean;
+          };
+        }>;
+      }>;
+    }>;
+  }) {
+    const users = provider.memberships
+      .slice()
+      .sort((left, right) => left.user.fullName.localeCompare(right.user.fullName))
+      .map((membership) => ({
+        id: membership.user.id,
+        fullName: membership.user.fullName,
+        email: membership.user.email,
+        role: membership.user.role,
+        membershipRole: membership.role,
+        isActive: membership.user.isActive
+      }));
+
+    const locations = provider.locations.map((location) => ({
+      id: location.id,
+      organizationId: location.organizationId,
+      name: location.name,
+      addressLine1: location.addressLine1,
+      addressLine2: location.addressLine2,
+      city: location.city,
+      stateRegion: location.stateRegion,
+      country: location.country,
+      postalCode: location.postalCode,
+      latitude: location.latitude.toString(),
+      longitude: location.longitude.toString(),
+      phone: location.phone,
+      notes: location.notes,
+      isActive: location.isActive,
+      createdAt: location.createdAt,
+      updatedAt: location.updatedAt,
+      operatingHours: location.operatingHours.map((hour) => ({
+        id: hour.id,
+        dayOfWeek: hour.dayOfWeek,
+        opensAt: hour.opensAt,
+        closesAt: hour.closesAt,
+        isClosed: hour.isClosed
+      })),
+      paymentMethods: location.paymentMethods.map((entry) => ({
+        id: entry.paymentMethod.id,
+        code: entry.paymentMethod.code,
+        label: entry.paymentMethod.label
+      })),
+      offers: location.offers.map((offer) => ({
+        id: offer.id,
+        providerLocationId: offer.providerLocationId,
+        testId: offer.testId,
+        test: {
+          id: offer.test.id,
+          name: offer.test.name,
+          slug: offer.test.slug,
+          category: offer.test.category,
+          description: offer.test.description,
+          preparationNotes: offer.test.preparationNotes,
+          isActive: offer.test.isActive
+        },
+        priceAmount: offer.priceAmount.toString(),
+        currencyCode: offer.currencyCode,
+        priceNotes: offer.priceNotes,
+        turnaroundTime: offer.turnaroundTime,
+        requiresAppointment: offer.requiresAppointment,
+        walkInAllowed: offer.walkInAllowed,
+        isAvailable: offer.isAvailable,
+        lastVerifiedAt: offer.lastVerifiedAt,
+        verifiedByUserId: offer.verifiedByUserId,
+        verificationSource: offer.verificationSource,
+        publicStatus: offer.publicStatus,
+        createdAt: offer.createdAt,
+        updatedAt: offer.updatedAt,
+        verifiedByUser: offer.verifiedByUser
+          ? {
+              id: offer.verifiedByUser.id,
+              email: offer.verifiedByUser.email,
+              fullName: offer.verifiedByUser.fullName,
+              role: offer.verifiedByUser.role,
+              isActive: offer.verifiedByUser.isActive
+            }
+          : null,
+        verificationRecords: offer.verificationRecords.map((record) => ({
+          id: record.id,
+          offerId: record.offerId,
+          verifiedAt: record.verifiedAt,
+          verifiedByUserId: record.verifiedByUserId,
+          method: record.method,
+          notes: record.notes,
+          verifiedByUser: {
+            id: record.verifiedByUser.id,
+            email: record.verifiedByUser.email,
+            fullName: record.verifiedByUser.fullName,
+            role: record.verifiedByUser.role,
+            isActive: record.verifiedByUser.isActive
+          }
+        }))
+      }))
+    }));
+
+    return {
+      id: provider.id,
+      name: provider.name,
+      type: provider.type,
+      phone: provider.phone,
+      website: provider.website,
+      isActive: provider.isActive,
+      createdAt: provider.createdAt,
+      updatedAt: provider.updatedAt,
+      locationCount: locations.length,
+      userCount: users.length,
+      offerCount: locations.reduce((count, location) => count + location.offers.length, 0),
+      users,
+      locations
+    };
   }
 }

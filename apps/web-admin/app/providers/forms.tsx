@@ -51,14 +51,20 @@ export function CreateProviderForm() {
   );
 }
 
-export function CreateProviderUserForm({ providers }: { providers: ProviderOption[] }) {
+export function CreateProviderUserForm({
+  defaultProviderId,
+  providers
+}: {
+  defaultProviderId?: string;
+  providers: ProviderOption[];
+}) {
   const [state, action, pending] = useActionState(createProviderUserAction, initialState);
 
   return (
     <form action={action} className="stack-form">
       <label className="field">
         <span>Provider</span>
-        <select defaultValue="" name="providerId" required>
+        <select defaultValue={defaultProviderId ?? ""} name="providerId" required>
           <option disabled value="">
             Select a provider
           </option>

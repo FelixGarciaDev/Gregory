@@ -227,6 +227,7 @@ body {
 
 .providers-layout {
   align-items: start;
+  grid-template-columns: 1fr;
 }
 
 .providers-list {
@@ -241,11 +242,40 @@ body {
   margin-bottom: 24px;
 }
 
+.provider-actions-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: -12px 0 24px;
+}
+
 .section-heading,
 .provider-card,
 .user-list {
   display: grid;
   gap: 12px;
+}
+
+.provider-card {
+  position: relative;
+}
+
+.provider-card > :not(.provider-card-hit-area) {
+  position: relative;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.provider-card-hit-area {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+}
+
+.provider-card:focus-within {
+  outline: 2px solid rgba(132, 81, 47, 0.28);
+  outline-offset: 3px;
 }
 
 .section-copy {
@@ -274,6 +304,124 @@ body {
   justify-content: space-between;
   gap: 16px;
   align-items: flex-start;
+}
+
+.provider-card-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  pointer-events: auto;
+}
+
+.provider-detail-layout {
+  display: grid;
+  gap: 16px;
+}
+
+.provider-detail-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.provider-detail-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.provider-detail-header h3,
+.provider-detail-header h5,
+.snapshot-section h4 {
+  margin: 0 0 6px;
+}
+
+.provider-location-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.detail-list {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+}
+
+.detail-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.detail-list div {
+  display: grid;
+  gap: 4px;
+}
+
+.detail-list dt {
+  color: rgba(30, 37, 40, 0.62);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.detail-list dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+.detail-list a {
+  color: inherit;
+}
+
+.snapshot-section {
+  display: grid;
+  gap: 10px;
+}
+
+.compact-list,
+.offer-list {
+  display: grid;
+  gap: 10px;
+}
+
+.compact-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-top: 1px solid rgba(30, 37, 40, 0.08);
+}
+
+.compact-row span {
+  color: rgba(30, 37, 40, 0.78);
+  text-align: right;
+}
+
+.pill-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 8px 10px;
+  background: rgba(30, 37, 40, 0.08);
+  color: rgba(30, 37, 40, 0.78);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.offer-item {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid rgba(30, 37, 40, 0.1);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.52);
 }
 
 .badge {
@@ -307,8 +455,18 @@ body {
   }
 
   .provider-card-header,
-  .user-row {
+  .user-row,
+  .provider-detail-header,
+  .compact-row {
     flex-direction: column;
+  }
+
+  .compact-row span {
+    text-align: left;
+  }
+
+  .provider-card-actions {
+    justify-content: flex-start;
   }
 
   .providers-actions {

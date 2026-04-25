@@ -20,6 +20,11 @@ export class AdminController {
     return this.adminService.createProvider(body);
   }
 
+  @Get("providers/:id")
+  getProvider(@Param("id") id: string) {
+    return this.adminService.getProvider(id);
+  }
+
   @Patch("providers/:id")
   updateProvider(@Param("id") id: string, @Body() body: Record<string, unknown>) {
     return { message: "Provider update scaffolded.", id, body };
