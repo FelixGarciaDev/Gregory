@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { logoutAction } from "../../actions";
 import { requireAdminSession } from "../../../lib/auth";
 import { getProvider, type ProviderSnapshot } from "../data";
+import { LocationMap } from "../location-map";
 
 type ProviderDetailsPageProps = {
   params: Promise<{
@@ -107,6 +108,9 @@ export default async function ProviderDetailsPage({ params }: ProviderDetailsPag
         <Link className="primary-button link-button" href={`/providers/users/new?providerId=${provider.id}`}>
           Add user
         </Link>
+        <Link className="secondary-button link-button" href={`/providers/${provider.id}/locations/new`}>
+          Add location
+        </Link>
       </section>
 
       <section className="provider-detail-layout">
@@ -193,36 +197,46 @@ export default async function ProviderDetailsPage({ params }: ProviderDetailsPag
           ) : (
             provider.locations.map((location) => (
               <article className="panel provider-location-panel" key={location.id}>
-                <div className="provider-detail-header">
-                  <div>
-                    <h3>{location.name ?? "Unnamed location"}</h3>
-                    <p className="section-copy">{formatAddress(location)}</p>
+                <div className="provider-location-summary-grid">
+                  <div className="provider-location-copy">
+                    <div className="provider-detail-header">
+                      <div>
+                        <h3>{location.name ?? "Unnamed location"}</h3>
+                        <p className="section-copy">{formatAddress(location)}</p>
+                      </div>
+                      <StatusBadge active={location.isActive} />
+                    </div>
+
+                    <dl className="detail-list detail-grid">
+                      <div>
+                        <dt>Phone</dt>
+                        <dd>{location.phone ?? "Not provided"}</dd>
+                      </div>
+                      <div>
+                        <dt>Coordinates</dt>
+                        <dd>
+                          {location.latitude}, {location.longitude}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Created</dt>
+                        <dd>{formatDate(location.createdAt)}</dd>
+                      </div>
+                      <div>
+                        <dt>Updated</dt>
+                        <dd>{formatDate(location.updatedAt)}</dd>
+                      </div>
+                    </dl>
+
+                    {location.notes ? <p className="section-copy">Notes: {location.notes}</p> : null}
                   </div>
-                  <StatusBadge active={location.isActive} />
+
+                  <LocationMap
+                    label={location.name ?? provider.name}
+                    latitude={location.latitude}
+                    longitude={location.longitude}
+                  />
                 </div>
-
-                <dl className="detail-list detail-grid">
-                  <div>
-                    <dt>Phone</dt>
-                    <dd>{location.phone ?? "Not provided"}</dd>
-                  </div>
-                  <div>
-                    <dt>Coordinates</dt>
-                    <dd>
-                      {location.latitude}, {location.longitude}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Created</dt>
-                    <dd>{formatDate(location.createdAt)}</dd>
-                  </div>
-                  <div>
-                    <dt>Updated</dt>
-                    <dd>{formatDate(location.updatedAt)}</dd>
-                  </div>
-                </dl>
-
-                {location.notes ? <p className="section-copy">Notes: {location.notes}</p> : null}
 
                 <div className="snapshot-section">
                   <h4>Operating hours</h4>

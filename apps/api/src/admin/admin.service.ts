@@ -1,7 +1,8 @@
 import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { MembershipRole, Prisma, UserRole } from "@prisma/client";
-import { randomBytes, scryptSync } from "node:crypto";
+import { randomBytes, randomUUID, scryptSync } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
+import { CreateAdminProviderLocationDto } from "./dto/create-provider-location.dto";
 import { CreateProviderDto } from "./dto/create-provider.dto";
 import { CreateProviderUserDto } from "./dto/create-provider-user.dto";
 
@@ -235,6 +236,84 @@ export class AdminService {
     });
   }
 
+  async createProviderLocation(input: CreateAdminProviderLocationDto) {
+    const provider = await this.prisma.organization.findUnique({
+      where: { id: input.providerId },
+      select: { id: true }
+    });
+
+    if (!provider) {
+      throw new NotFoundException("Provider not found.");
+    }
+
+    const locationId = randomUUID();
+    const latitude = new Prisma.Decimal(input.latitude);
+    const longitude = new Prisma.Decimal(input.longitude);
+
+    await this.prisma.$queryRaw(Prisma.sql`
+      INSERT INTO provider_locations (
+        id,
+        organization_id,
+        name,
+        address_line_1,
+        address_line_2,
+        city,
+        state_region,
+        country,
+        postal_code,
+        latitude,
+        longitude,
+        geom,
+        phone,
+        notes,
+        is_active,
+        created_at,
+        updated_at
+      )
+      VALUES (
+        ${locationId},
+        ${provider.id},
+        ${this.nullableTrim(input.name)},
+        ${input.addressLine1.trim()},
+        ${this.nullableTrim(input.addressLine2)},
+        ${input.city.trim()},
+        ${input.stateRegion.trim()},
+        ${(input.country?.trim() || "VE").toUpperCase()},
+        ${this.nullableTrim(input.postalCode)},
+        ${latitude},
+        ${longitude},
+        ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography,
+        ${this.nullableTrim(input.phone)},
+        ${this.nullableTrim(input.notes)},
+        true,
+        NOW(),
+        NOW()
+      )
+    `);
+
+    return this.prisma.providerLocation.findUniqueOrThrow({
+      where: { id: locationId },
+      select: {
+        id: true,
+        organizationId: true,
+        name: true,
+        addressLine1: true,
+        addressLine2: true,
+        city: true,
+        stateRegion: true,
+        country: true,
+        postalCode: true,
+        latitude: true,
+        longitude: true,
+        phone: true,
+        notes: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+  }
+
   private hashPassword(password: string) {
     const salt = randomBytes(16).toString("hex");
     const derivedKey = scryptSync(password, salt, 64).toString("hex");
@@ -243,6 +322,15 @@ export class AdminService {
 
   private defaultMembershipRoleFor(role: UserRole) {
     return role === UserRole.provider_admin ? MembershipRole.manager : MembershipRole.staff;
+  }
+
+  private nullableTrim(value: string | undefined) {
+    if (value === undefined) {
+      return undefined;
+    }
+
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
   }
 
   private mapProviderSnapshot(provider: {
