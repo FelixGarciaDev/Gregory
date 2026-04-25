@@ -14,12 +14,14 @@ export default async function NewProviderUserPage() {
         <div>
           <p className="eyebrow">Gregory Admin</p>
           <h1>Create provider user</h1>
-          <p className="lede">Assign either a `provider_admin` or `provider_user` account to an existing provider.</p>
+          <p className="lede">
+            Assign either a provider_admin or provider_user account to an existing provider organization.
+          </p>
         </div>
 
         <div className="toolbar-actions">
           <Link className="secondary-button link-button" href="/providers">
-            Back to providers
+            Back to organizations
           </Link>
 
           <form action={logoutAction}>

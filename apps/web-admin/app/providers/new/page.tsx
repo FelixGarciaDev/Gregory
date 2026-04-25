@@ -11,13 +11,13 @@ export default async function NewProviderPage() {
       <section className="hero hero-with-toolbar">
         <div>
           <p className="eyebrow">Gregory Admin</p>
-          <h1>Create provider</h1>
-          <p className="lede">Create the organization first, then assign provider-specific users from the provider user page.</p>
+          <h1>Create provider organization</h1>
+          <p className="lede">Create the organization first, then assign provider users from the user page.</p>
         </div>
 
         <div className="toolbar-actions">
           <Link className="secondary-button link-button" href="/providers">
-            Back to providers
+            Back to organizations
           </Link>
 
           <form action={logoutAction}>

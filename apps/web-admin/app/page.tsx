@@ -4,25 +4,25 @@ import { requireAdminSession } from "../lib/auth";
 
 const cards = [
   {
-    title: "Providers",
-    description: "Create providers and assign provider admins or provider users.",
+    title: "Provider organizations",
+    description: "Create provider organizations and assign provider admins or provider users.",
     href: "/providers"
   },
   {
     title: "Canonical test catalog",
-    description: "Implement authenticated forms here and point them at the `/v1/admin/*` endpoints."
+    description: "Manage the shared tests that provider locations can attach offers to."
   },
   {
-    title: "Offers, prices, and hours",
-    description: "Implement authenticated forms here and point them at the `/v1/admin/*` endpoints."
+    title: "Location test offers",
+    description: "Manage branch-specific test pricing, availability, and turnaround details."
   },
   {
-    title: "Payment methods and verification",
-    description: "Implement authenticated forms here and point them at the `/v1/admin/*` endpoints."
+    title: "Location payments and verification",
+    description: "Track payment methods per provider location and offer verification records."
   },
   {
-    title: "Provider account assignment",
-    description: "Implement authenticated forms here and point them at the `/v1/admin/*` endpoints."
+    title: "Provider user assignment",
+    description: "Attach users to provider organizations with the right provider and membership roles."
   }
 ];
 
@@ -36,8 +36,8 @@ export default async function AdminHome() {
           <p className="eyebrow">Gregory Admin</p>
           <h1>Data operations cockpit</h1>
           <p className="lede">
-            Signed in as <strong>{session.user.email}</strong>. This shell is ready for provider CRUD, catalog
-            management, pricing, verification, and CSV imports against the Nest API.
+            Signed in as <strong>{session.user.email}</strong>. This shell is ready for provider organization CRUD,
+            shared test catalog management, location-specific offers, verification, and CSV imports against the Nest API.
           </p>
         </div>
 
