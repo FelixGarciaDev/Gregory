@@ -35,9 +35,6 @@ export default async function ProvidersPage() {
         <Link className="primary-button link-button" href="/providers/new">
           Add organization
         </Link>
-        <Link className="secondary-button link-button" href="/providers/users/new">
-          Add user
-        </Link>
       </section>
 
       <section className="providers-list">
@@ -54,6 +51,11 @@ export default async function ProvidersPage() {
           ) : (
             providers.map((provider) => (
               <article className="panel provider-card" key={provider.id}>
+                <Link
+                  aria-label={`View ${provider.name} details`}
+                  className="provider-card-hit-area"
+                  href={`/providers/${provider.id}`}
+                />
                 <div className="provider-card-header">
                   <div>
                     <h3>{provider.name}</h3>
@@ -61,11 +63,16 @@ export default async function ProvidersPage() {
                       {provider.type} - {provider.locationCount} branches - {provider.userCount} users
                     </p>
                   </div>
-                  {provider.website ? (
-                    <a className="secondary-button link-button" href={provider.website} rel="noreferrer" target="_blank">
-                      Website
-                    </a>
-                  ) : null}
+                  <div className="provider-card-actions">
+                    <button className="secondary-button" type="button">
+                      Edit
+                    </button>
+                    {provider.website ? (
+                      <a className="secondary-button link-button" href={provider.website} rel="noreferrer" target="_blank">
+                        Website
+                      </a>
+                    ) : null}
+                  </div>
                 </div>
 
                 {provider.phone ? <p className="section-copy">Phone: {provider.phone}</p> : null}

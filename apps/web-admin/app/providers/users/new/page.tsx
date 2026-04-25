@@ -4,9 +4,18 @@ import { requireAdminSession } from "../../../../lib/auth";
 import { CreateProviderUserForm } from "../../forms";
 import { getProviders } from "../../data";
 
-export default async function NewProviderUserPage() {
+type NewProviderUserPageProps = {
+  searchParams: Promise<{
+    providerId?: string;
+  }>;
+};
+
+export default async function NewProviderUserPage({ searchParams }: NewProviderUserPageProps) {
   await requireAdminSession();
+  const { providerId } = await searchParams;
   const providers = await getProviders();
+  const selectedProvider = providers.find((provider) => provider.id === providerId);
+  const defaultProviderId = selectedProvider?.id;
 
   return (
     <main className="page-shell">
@@ -20,8 +29,8 @@ export default async function NewProviderUserPage() {
         </div>
 
         <div className="toolbar-actions">
-          <Link className="secondary-button link-button" href="/providers">
-            Back to organizations
+          <Link className="secondary-button link-button" href={defaultProviderId ? `/providers/${defaultProviderId}` : "/providers"}>
+            {defaultProviderId ? "Back to organization" : "Back to organizations"}
           </Link>
 
           <form action={logoutAction}>
@@ -34,7 +43,10 @@ export default async function NewProviderUserPage() {
 
       <section className="single-column">
         <article className="panel form-panel">
-          <CreateProviderUserForm providers={providers.map(({ id, name }) => ({ id, name }))} />
+          <CreateProviderUserForm
+            defaultProviderId={defaultProviderId}
+            providers={providers.map(({ id, name }) => ({ id, name }))}
+          />
         </article>
       </section>
     </main>

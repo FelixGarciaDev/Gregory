@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Patch, Post } from "@nestjs/common";
 import { UserRole } from "@prisma/client";
 import { Roles } from "../authz/decorators/roles.decorator";
 import { AdminService } from "./admin.service";
+import { CreateAdminProviderLocationDto } from "./dto/create-provider-location.dto";
 import { CreateProviderDto } from "./dto/create-provider.dto";
 import { CreateProviderUserDto } from "./dto/create-provider-user.dto";
 
@@ -20,14 +21,19 @@ export class AdminController {
     return this.adminService.createProvider(body);
   }
 
+  @Get("providers/:id")
+  getProvider(@Param("id") id: string) {
+    return this.adminService.getProvider(id);
+  }
+
   @Patch("providers/:id")
   updateProvider(@Param("id") id: string, @Body() body: Record<string, unknown>) {
     return { message: "Provider update scaffolded.", id, body };
   }
 
   @Post("provider-locations")
-  createLocation(@Body() body: Record<string, unknown>) {
-    return { message: "Provider location creation scaffolded.", body };
+  createLocation(@Body() body: CreateAdminProviderLocationDto) {
+    return this.adminService.createProviderLocation(body);
   }
 
   @Patch("provider-locations/:id")
