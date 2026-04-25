@@ -115,3 +115,84 @@ export async function updateOrganizationAction(
   revalidatePath("/organization");
   return { success: "Organization profile updated." };
 }
+
+export async function saveLocationAction(
+  _: ProviderFormState,
+  formData: FormData
+): Promise<ProviderFormState> {
+  const session = await getSession();
+
+  if (!session) {
+    return { error: "Your provider session has expired. Sign in again." };
+  }
+
+  if (session.user.role !== "provider_admin") {
+    return { error: "Only provider admins can edit location details." };
+  }
+
+  const locationId = String(formData.get("locationId") ?? "").trim();
+  const name = String(formData.get("name") ?? "").trim();
+  const addressLine1 = String(formData.get("addressLine1") ?? "").trim();
+  const addressLine2 = String(formData.get("addressLine2") ?? "").trim();
+  const city = String(formData.get("city") ?? "").trim();
+  const stateRegion = String(formData.get("stateRegion") ?? "").trim();
+  const country = String(formData.get("country") ?? "").trim() || "VE";
+  const postalCode = String(formData.get("postalCode") ?? "").trim();
+  const latitude = Number(String(formData.get("latitude") ?? "").trim());
+  const longitude = Number(String(formData.get("longitude") ?? "").trim());
+  const phone = String(formData.get("phone") ?? "").trim();
+  const notes = String(formData.get("notes") ?? "").trim();
+
+  if (!addressLine1 || !city || !stateRegion || !country) {
+    return { error: "Address line 1, city, state/region, and country are required." };
+  }
+
+  if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
+    return { error: "Choose a valid point on the map or from Google suggestions." };
+  }
+
+  const payload = {
+    name: name || undefined,
+    addressLine1,
+    addressLine2: addressLine2 || undefined,
+    city,
+    stateRegion,
+    country,
+    postalCode: postalCode || undefined,
+    latitude,
+    longitude,
+    phone: phone || undefined,
+    notes: notes || undefined
+  };
+
+  const method = locationId ? "PATCH" : "POST";
+  const endpoint = locationId
+    ? `${API_BASE_URL}/provider/locations/${locationId}`
+    : `${API_BASE_URL}/provider/locations`;
+
+  let response: Response;
+
+  try {
+    response = await fetch(endpoint, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.token}`
+      },
+      body: JSON.stringify(payload),
+      cache: "no-store"
+    });
+  } catch {
+    return { error: "The API is unreachable. Check that the Nest server is running." };
+  }
+
+  if (!response.ok) {
+    const data = (await response.json().catch(() => null)) as { message?: string | string[] } | null;
+    const message = Array.isArray(data?.message) ? data?.message[0] : data?.message;
+    return { error: message ?? "Could not save the location." };
+  }
+
+  revalidatePath("/");
+  revalidatePath("/organization");
+  return { success: locationId ? "Location updated." : "Location created." };
+}
