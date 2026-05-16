@@ -8,6 +8,9 @@ build
 *.iml
 .env
 .env.local
-pnpm-lock.yaml
+.env.production
+docs/deploy-contabo-vps.md
+infra/nginx/demogregoryadmin.felixgarcia.dev.conf.example
+scripts/backup-gregory-postgres.sh
 apps/api/prisma/dev.db
 apps/android-consumer/local.properties
