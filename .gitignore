@@ -10,6 +10,7 @@ build
 .env.local
 .env.production
 docs/deploy-contabo-vps.md
+docs/production-access.md
 infra/nginx/demogregoryadmin.felixgarcia.dev.conf.example
 scripts/backup-gregory-postgres.sh
 apps/api/prisma/dev.db
