@@ -180,7 +180,6 @@ export class ProviderService {
   async listOffers(actor: RequestActor) {
     const items = await this.prisma.offer.findMany({
       where: {
-        isAvailable: true,
         providerLocation: {
           organizationId: actor.organizationId!
         }
@@ -199,6 +198,7 @@ export class ProviderService {
   async createOffer(input: CreateProviderOfferDto, actor: RequestActor) {
     await this.assertScopedLocationExists(input.providerLocationId, actor.organizationId);
     await this.assertTestExists(input.testId);
+    await this.assertOfferDoesNotExist(input.providerLocationId, input.testId);
 
     const offer = await this.prisma.offer.create({
       data: {
@@ -218,15 +218,21 @@ export class ProviderService {
   }
 
   async updateOffer(id: string, input: UpdateProviderOfferDto, actor: RequestActor) {
-    await this.getScopedOffer(id, actor.organizationId);
+    const current = await this.getScopedOffer(id, actor.organizationId);
 
-    if (input.providerLocationId) {
+    if (input.providerLocationId && input.providerLocationId !== current.providerLocationId) {
       await this.assertScopedLocationExists(input.providerLocationId, actor.organizationId);
     }
 
-    if (input.testId) {
+    if (input.testId && input.testId !== current.testId) {
       await this.assertTestExists(input.testId);
     }
+
+    await this.assertOfferDoesNotExist(
+      input.providerLocationId ?? current.providerLocationId,
+      input.testId ?? current.testId,
+      id
+    );
 
     const offer = await this.prisma.offer.update({
       where: { id },
@@ -599,6 +605,21 @@ export class ProviderService {
 
     if (!test) {
       throw new NotFoundException("Test not found.");
+    }
+  }
+
+  private async assertOfferDoesNotExist(providerLocationId: string, testId: string, excludeId?: string) {
+    const existingOffer = await this.prisma.offer.findFirst({
+      where: {
+        providerLocationId,
+        testId,
+        id: excludeId ? { not: excludeId } : undefined
+      },
+      select: { id: true }
+    });
+
+    if (existingOffer) {
+      throw new ConflictException("That location already has an offer for this canonical test.");
     }
   }
 

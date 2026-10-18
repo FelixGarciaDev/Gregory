@@ -204,9 +204,23 @@ function getSuggestionLabel(prediction: any) {
   };
 }
 
-export function LocationForm({ locations }: { locations: ProviderLocation[] }) {
+export function LocationForm({
+  locations = [],
+  location,
+  title,
+  description,
+  submitLabel,
+  redirectTo
+}: {
+  locations?: ProviderLocation[];
+  location?: ProviderLocation;
+  title?: string;
+  description?: string;
+  submitLabel?: string;
+  redirectTo?: string;
+}) {
   const [state, formAction, pending] = useActionState(saveLocationAction, initialState);
-  const primaryLocation = locations[0];
+  const primaryLocation = location ?? locations[0];
   const [draft, setDraft] = useState<LocationDraft>(() => toDraft(primaryLocation));
   const [status, setStatus] = useState<LocationStatus>("manual");
   const [mapsMessage, setMapsMessage] = useState("");
@@ -505,10 +519,10 @@ export function LocationForm({ locations }: { locations: ProviderLocation[] }) {
     <div className="location-panel">
       <div className="location-panel-header">
         <div>
-          <p className="eyebrow">Main location</p>
-          <h2>{primaryLocation ? "Edit primary location" : "Add your first location"}</h2>
+          <p className="eyebrow">Provider location</p>
+          <h2>{title ?? (primaryLocation ? "Edit primary location" : "Add your first location")}</h2>
           <p className="section-copy">
-            Search with Google Maps, tweak the address manually if needed, and confirm the final pin on the map.
+            {description ?? "Search with Google Maps, tweak the address manually if needed, and confirm the final pin on the map."}
           </p>
         </div>
         <span className={`location-status location-status-${status}`}>{labelForStatus(status)}</span>
@@ -516,6 +530,7 @@ export function LocationForm({ locations }: { locations: ProviderLocation[] }) {
 
       <form action={formAction} className="provider-form location-form">
         <input type="hidden" name="locationId" value={draft.locationId} />
+        {redirectTo ? <input type="hidden" name="redirectTo" value={redirectTo} /> : null}
 
         <label className="field">
           <span>Location name</span>
@@ -763,7 +778,7 @@ export function LocationForm({ locations }: { locations: ProviderLocation[] }) {
         {state.success ? <p className="form-success">{state.success}</p> : null}
 
         <button className="primary-button" type="submit" disabled={pending}>
-          {pending ? "Saving..." : primaryLocation ? "Save main location" : "Create main location"}
+          {pending ? "Saving..." : submitLabel ?? (primaryLocation ? "Save main location" : "Create main location")}
         </button>
       </form>
 

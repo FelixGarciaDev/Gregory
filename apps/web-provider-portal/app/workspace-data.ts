@@ -38,6 +38,35 @@ export type ProviderLocation = {
   updatedAt: string;
 };
 
+export type ProviderCanonicalTest = {
+  id: string;
+  name: string;
+  slug: string;
+  category: string;
+  description: string | null;
+  preparationNotes: string | null;
+};
+
+export type ProviderOffer = {
+  id: string;
+  providerLocationId: string;
+  providerLocationName: string | null;
+  testId: string;
+  testName: string;
+  testSlug: string;
+  testCategory: string;
+  priceAmount: string;
+  currencyCode: string;
+  priceNotes: string | null;
+  turnaroundTime: string | null;
+  requiresAppointment: boolean;
+  walkInAllowed: boolean;
+  isAvailable: boolean;
+  publicStatus: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export async function getProviderWorkspace() {
   const session = await getSession();
 
@@ -87,4 +116,45 @@ export async function getProviderLocations() {
   } catch {
     return [] as ProviderLocation[];
   }
+}
+
+async function providerGet<T>(path: string, fallback: T): Promise<T> {
+  const session = await getSession();
+
+  if (!session) {
+    return fallback;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      headers: { Authorization: `Bearer ${session.token}` },
+      cache: "no-store"
+    });
+
+    if (!response.ok) {
+      return fallback;
+    }
+
+    return (await response.json()) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+export function getProviderLocation(locationId: string) {
+  return providerGet<ProviderLocation | null>(`/provider/locations/${locationId}`, null);
+}
+
+export async function getProviderOffers() {
+  const data = await providerGet<{ items?: ProviderOffer[] }>("/provider/offers", {});
+  return data.items ?? [];
+}
+
+export function getProviderOffer(offerId: string) {
+  return providerGet<ProviderOffer | null>(`/provider/offers/${offerId}`, null);
+}
+
+export async function getProviderTests() {
+  const data = await providerGet<{ items?: ProviderCanonicalTest[] }>("/provider/tests", {});
+  return data.items ?? [];
 }

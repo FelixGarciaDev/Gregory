@@ -1,10 +1,14 @@
 import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
-import { MembershipRole, Prisma, UserRole } from "@prisma/client";
+import { MembershipRole, OfferStatus, Prisma, TestCategory, UserRole } from "@prisma/client";
 import { randomBytes, randomUUID, scryptSync } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
+import { CreateProviderOfferDto } from "../provider/dto/create-provider-offer.dto";
+import { UpdateProviderOfferDto } from "../provider/dto/update-provider-offer.dto";
 import { CreateAdminProviderLocationDto } from "./dto/create-provider-location.dto";
+import { CreateCanonicalTestDto } from "./dto/create-canonical-test.dto";
 import { CreateProviderDto } from "./dto/create-provider.dto";
 import { CreateProviderUserDto } from "./dto/create-provider-user.dto";
+import { UpdateCanonicalTestDto } from "./dto/update-canonical-test.dto";
 
 @Injectable()
 export class AdminService {
@@ -71,6 +75,110 @@ export class AdminService {
     });
 
     return provider;
+  }
+
+  async listCanonicalTests() {
+    const tests = await this.prisma.test.findMany({
+      orderBy: [{ name: "asc" }, { id: "asc" }],
+      include: {
+        _count: {
+          select: {
+            aliases: true,
+            offers: true
+          }
+        }
+      }
+    });
+
+    return {
+      items: tests.map((test) => this.mapCanonicalTest(test))
+    };
+  }
+
+  async getCanonicalTest(id: string) {
+    const test = await this.prisma.test.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            aliases: true,
+            offers: true
+          }
+        }
+      }
+    });
+
+    if (!test) {
+      throw new NotFoundException("Canonical test not found.");
+    }
+
+    return this.mapCanonicalTest(test);
+  }
+
+  async createCanonicalTest(input: CreateCanonicalTestDto) {
+    try {
+      const test = await this.prisma.test.create({
+        data: {
+          name: input.name.trim(),
+          slug: input.slug.trim(),
+          category: input.category,
+          description: this.nullableTrim(input.description),
+          preparationNotes: this.nullableTrim(input.preparationNotes),
+          isActive: input.isActive ?? true
+        },
+        include: {
+          _count: {
+            select: {
+              aliases: true,
+              offers: true
+            }
+          }
+        }
+      });
+
+      return this.mapCanonicalTest(test);
+    } catch (error) {
+      this.throwCanonicalTestConflict(error);
+      throw error;
+    }
+  }
+
+  async updateCanonicalTest(id: string, input: UpdateCanonicalTestDto) {
+    const existingTest = await this.prisma.test.findUnique({
+      where: { id },
+      select: { id: true }
+    });
+
+    if (!existingTest) {
+      throw new NotFoundException("Canonical test not found.");
+    }
+
+    try {
+      const test = await this.prisma.test.update({
+        where: { id },
+        data: {
+          name: input.name?.trim(),
+          slug: input.slug?.trim(),
+          category: input.category,
+          description: this.nullableTrim(input.description),
+          preparationNotes: this.nullableTrim(input.preparationNotes),
+          isActive: input.isActive
+        },
+        include: {
+          _count: {
+            select: {
+              aliases: true,
+              offers: true
+            }
+          }
+        }
+      });
+
+      return this.mapCanonicalTest(test);
+    } catch (error) {
+      this.throwCanonicalTestConflict(error);
+      throw error;
+    }
   }
 
   async getProvider(id: string) {
@@ -314,6 +422,134 @@ export class AdminService {
     });
   }
 
+  async listProviderLocations() {
+    const locations = await this.prisma.providerLocation.findMany({
+      include: {
+        organization: {
+          select: {
+            id: true,
+            name: true,
+            isActive: true
+          }
+        }
+      },
+      orderBy: [
+        { organization: { name: "asc" } },
+        { name: "asc" },
+        { id: "asc" }
+      ]
+    });
+
+    return {
+      items: locations.map((location) => ({
+        id: location.id,
+        name: location.name,
+        addressLine1: location.addressLine1,
+        city: location.city,
+        stateRegion: location.stateRegion,
+        isActive: location.isActive,
+        organizationId: location.organization.id,
+        organizationName: location.organization.name,
+        organizationIsActive: location.organization.isActive
+      }))
+    };
+  }
+
+  async listOffers() {
+    const offers = await this.prisma.offer.findMany({
+      include: this.adminOfferInclude(),
+      orderBy: [{ createdAt: "desc" }, { id: "asc" }]
+    });
+
+    return { items: offers.map((offer) => this.mapAdminOffer(offer)) };
+  }
+
+  async getOffer(id: string) {
+    const offer = await this.prisma.offer.findUnique({
+      where: { id },
+      include: this.adminOfferInclude()
+    });
+
+    if (!offer) {
+      throw new NotFoundException("Offer not found.");
+    }
+
+    return this.mapAdminOffer(offer);
+  }
+
+  async createOffer(input: CreateProviderOfferDto) {
+    await this.assertAdminOfferReferences(input.providerLocationId, input.testId);
+    await this.assertOfferDoesNotExist(input.providerLocationId, input.testId);
+
+    const offer = await this.prisma.offer.create({
+      data: {
+        providerLocationId: input.providerLocationId,
+        testId: input.testId,
+        priceAmount: new Prisma.Decimal(input.priceAmount),
+        currencyCode: input.currencyCode.trim().toUpperCase(),
+        priceNotes: this.nullableTrim(input.priceNotes),
+        turnaroundTime: this.nullableTrim(input.turnaroundTime),
+        requiresAppointment: input.requiresAppointment ?? false,
+        walkInAllowed: input.walkInAllowed ?? true
+      },
+      include: this.adminOfferInclude()
+    });
+
+    return this.mapAdminOffer(offer);
+  }
+
+  async updateOffer(id: string, input: UpdateProviderOfferDto) {
+    const current = await this.prisma.offer.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        providerLocationId: true,
+        testId: true
+      }
+    });
+
+    if (!current) {
+      throw new NotFoundException("Offer not found.");
+    }
+
+    const providerLocationId = input.providerLocationId ?? current.providerLocationId;
+    const testId = input.testId ?? current.testId;
+
+    if (providerLocationId !== current.providerLocationId) {
+      await this.assertAdminLocationExists(providerLocationId);
+    }
+
+    if (testId !== current.testId) {
+      await this.assertAdminTestExists(testId);
+    }
+    await this.assertOfferDoesNotExist(providerLocationId, testId, id);
+
+    const offer = await this.prisma.offer.update({
+      where: { id },
+      data: this.stripUndefined({
+        providerLocationId: input.providerLocationId,
+        testId: input.testId,
+        priceAmount: input.priceAmount ? new Prisma.Decimal(input.priceAmount) : undefined,
+        currencyCode: input.currencyCode?.trim().toUpperCase(),
+        priceNotes: input.priceNotes === undefined ? undefined : this.nullableTrim(input.priceNotes),
+        turnaroundTime:
+          input.turnaroundTime === undefined ? undefined : this.nullableTrim(input.turnaroundTime),
+        requiresAppointment: input.requiresAppointment,
+        walkInAllowed: input.walkInAllowed,
+        isAvailable: input.isAvailable,
+        publicStatus:
+          input.isAvailable === undefined
+            ? undefined
+            : input.isAvailable
+              ? OfferStatus.active
+              : OfferStatus.inactive
+      }),
+      include: this.adminOfferInclude()
+    });
+
+    return this.mapAdminOffer(offer);
+  }
+
   private hashPassword(password: string) {
     const salt = randomBytes(16).toString("hex");
     const derivedKey = scryptSync(password, salt, 64).toString("hex");
@@ -331,6 +567,175 @@ export class AdminService {
 
     const trimmed = value.trim();
     return trimmed.length > 0 ? trimmed : null;
+  }
+
+  private stripUndefined<T extends Record<string, unknown>>(value: T) {
+    return Object.fromEntries(
+      Object.entries(value).filter(([, entryValue]) => entryValue !== undefined)
+    ) as T;
+  }
+
+  private throwCanonicalTestConflict(error: unknown) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      throw new ConflictException("A canonical test with that slug already exists.");
+    }
+  }
+
+  private adminOfferInclude() {
+    return {
+      providerLocation: {
+        select: {
+          id: true,
+          name: true,
+          organizationId: true,
+          organization: {
+            select: {
+              id: true,
+              name: true
+            }
+          }
+        }
+      },
+      test: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          category: true,
+          isActive: true
+        }
+      }
+    } satisfies Prisma.OfferInclude;
+  }
+
+  private async assertAdminOfferReferences(providerLocationId: string, testId: string) {
+    await Promise.all([
+      this.assertAdminLocationExists(providerLocationId),
+      this.assertAdminTestExists(testId)
+    ]);
+  }
+
+  private async assertAdminLocationExists(providerLocationId: string) {
+    const location = await this.prisma.providerLocation.findFirst({
+      where: {
+        id: providerLocationId,
+        isActive: true,
+        organization: { isActive: true }
+      },
+      select: { id: true }
+    });
+
+    if (!location) {
+      throw new NotFoundException("Provider location not found.");
+    }
+  }
+
+  private async assertAdminTestExists(testId: string) {
+    const test = await this.prisma.test.findFirst({
+      where: { id: testId, isActive: true },
+      select: { id: true }
+    });
+
+    if (!test) {
+      throw new NotFoundException("Canonical test not found.");
+    }
+  }
+
+  private async assertOfferDoesNotExist(providerLocationId: string, testId: string, excludeId?: string) {
+    const existingOffer = await this.prisma.offer.findFirst({
+      where: {
+        providerLocationId,
+        testId,
+        id: excludeId ? { not: excludeId } : undefined
+      },
+      select: { id: true }
+    });
+
+    if (existingOffer) {
+      throw new ConflictException("That location already has an offer for this canonical test.");
+    }
+  }
+
+  private mapAdminOffer(offer: {
+    id: string;
+    providerLocationId: string;
+    testId: string;
+    priceAmount: Prisma.Decimal;
+    currencyCode: string;
+    priceNotes: string | null;
+    turnaroundTime: string | null;
+    requiresAppointment: boolean;
+    walkInAllowed: boolean;
+    isAvailable: boolean;
+    publicStatus: OfferStatus;
+    createdAt: Date;
+    updatedAt: Date;
+    providerLocation: {
+      id: string;
+      name: string | null;
+      organizationId: string;
+      organization: { id: string; name: string };
+    };
+    test: {
+      id: string;
+      name: string;
+      slug: string;
+      category: string;
+      isActive: boolean;
+    };
+  }) {
+    return {
+      id: offer.id,
+      providerId: offer.providerLocation.organization.id,
+      providerName: offer.providerLocation.organization.name,
+      providerLocationId: offer.providerLocationId,
+      providerLocationName: offer.providerLocation.name,
+      testId: offer.testId,
+      testName: offer.test.name,
+      testSlug: offer.test.slug,
+      testCategory: offer.test.category,
+      testIsActive: offer.test.isActive,
+      priceAmount: offer.priceAmount.toString(),
+      currencyCode: offer.currencyCode,
+      priceNotes: offer.priceNotes,
+      turnaroundTime: offer.turnaroundTime,
+      requiresAppointment: offer.requiresAppointment,
+      walkInAllowed: offer.walkInAllowed,
+      isAvailable: offer.isAvailable,
+      publicStatus: offer.publicStatus,
+      createdAt: offer.createdAt,
+      updatedAt: offer.updatedAt
+    };
+  }
+
+  private mapCanonicalTest(test: {
+    id: string;
+    name: string;
+    slug: string;
+    category: TestCategory;
+    description: string | null;
+    preparationNotes: string | null;
+    isActive: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+    _count: {
+      aliases: number;
+      offers: number;
+    };
+  }) {
+    return {
+      id: test.id,
+      name: test.name,
+      slug: test.slug,
+      category: test.category,
+      description: test.description,
+      preparationNotes: test.preparationNotes,
+      isActive: test.isActive,
+      createdAt: test.createdAt,
+      updatedAt: test.updatedAt,
+      aliasCount: test._count.aliases,
+      offerCount: test._count.offers
+    };
   }
 
   private mapProviderSnapshot(provider: {
