@@ -105,6 +105,203 @@ export async function createProviderAction(
   redirect("/providers");
 }
 
+function canonicalTestSlug(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+async function apiErrorMessage(response: Response, fallback: string) {
+  const data = (await response.json().catch(() => null)) as { message?: string | string[] } | null;
+  const message = Array.isArray(data?.message) ? data.message[0] : data?.message;
+  return message ?? fallback;
+}
+
+export async function createCanonicalTestAction(
+  _: AdminFormState,
+  formData: FormData
+): Promise<AdminFormState> {
+  const session = await getSession();
+
+  if (!session) {
+    return { error: "Your admin session has expired. Sign in again." };
+  }
+
+  const name = String(formData.get("name") ?? "").trim();
+  const slug = canonicalTestSlug(String(formData.get("slug") ?? "").trim() || name);
+  const category = String(formData.get("category") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  const preparationNotes = String(formData.get("preparationNotes") ?? "").trim();
+  const isActive = formData.get("isActive") === "on";
+
+  if (!name || !slug || !category) {
+    return { error: "Test name, slug, and category are required." };
+  }
+
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}/admin/tests`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.token}`
+      },
+      body: JSON.stringify({
+        name,
+        slug,
+        category,
+        description: description || undefined,
+        preparationNotes: preparationNotes || undefined,
+        isActive
+      }),
+      cache: "no-store"
+    });
+  } catch {
+    return { error: "The API is unreachable. Check that the Nest server is running." };
+  }
+
+  if (!response.ok) {
+    return { error: await apiErrorMessage(response, "Could not create the canonical test.") };
+  }
+
+  revalidatePath("/tests");
+  redirect("/tests");
+}
+
+export async function updateCanonicalTestAction(
+  _: AdminFormState,
+  formData: FormData
+): Promise<AdminFormState> {
+  const session = await getSession();
+
+  if (!session) {
+    return { error: "Your admin session has expired. Sign in again." };
+  }
+
+  const testId = String(formData.get("testId") ?? "").trim();
+  const name = String(formData.get("name") ?? "").trim();
+  const slug = canonicalTestSlug(String(formData.get("slug") ?? "").trim() || name);
+  const category = String(formData.get("category") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  const preparationNotes = String(formData.get("preparationNotes") ?? "").trim();
+  const isActive = formData.get("isActive") === "on";
+
+  if (!testId || !name || !slug || !category) {
+    return { error: "Test name, slug, and category are required." };
+  }
+
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}/admin/tests/${testId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.token}`
+      },
+      body: JSON.stringify({
+        name,
+        slug,
+        category,
+        description,
+        preparationNotes,
+        isActive
+      }),
+      cache: "no-store"
+    });
+  } catch {
+    return { error: "The API is unreachable. Check that the Nest server is running." };
+  }
+
+  if (!response.ok) {
+    return { error: await apiErrorMessage(response, "Could not update the canonical test.") };
+  }
+
+  revalidatePath("/tests");
+  revalidatePath(`/tests/${testId}/edit`);
+  redirect("/tests");
+}
+
+export async function createAdminOfferAction(
+  _: AdminFormState,
+  formData: FormData
+): Promise<AdminFormState> {
+  return saveAdminOffer(formData);
+}
+
+export async function updateAdminOfferAction(
+  _: AdminFormState,
+  formData: FormData
+): Promise<AdminFormState> {
+  return saveAdminOffer(formData);
+}
+
+async function saveAdminOffer(formData: FormData): Promise<AdminFormState> {
+  const session = await getSession();
+
+  if (!session) {
+    return { error: "Your admin session has expired. Sign in again." };
+  }
+
+  const offerId = String(formData.get("offerId") ?? "").trim();
+  const providerLocationId = String(formData.get("providerLocationId") ?? "").trim();
+  const testId = String(formData.get("testId") ?? "").trim();
+  const priceAmount = String(formData.get("priceAmount") ?? "").trim();
+  const currencyCode = String(formData.get("currencyCode") ?? "").trim().toUpperCase();
+  const priceNotes = String(formData.get("priceNotes") ?? "").trim();
+  const turnaroundTime = String(formData.get("turnaroundTime") ?? "").trim();
+  const requiresAppointment = formData.get("requiresAppointment") === "on";
+  const walkInAllowed = formData.get("walkInAllowed") === "on";
+  const isAvailable = formData.get("isAvailable") === "on";
+
+  if (!providerLocationId || !testId || !priceAmount || !currencyCode) {
+    return { error: "Location, canonical test, price, and currency are required." };
+  }
+
+  const endpoint = offerId
+    ? `${API_BASE_URL}/admin/offers/${offerId}`
+    : `${API_BASE_URL}/admin/offers`;
+
+  let response: Response;
+
+  try {
+    response = await fetch(endpoint, {
+      method: offerId ? "PATCH" : "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.token}`
+      },
+      body: JSON.stringify({
+        providerLocationId,
+        testId,
+        priceAmount,
+        currencyCode,
+        priceNotes: offerId ? priceNotes : priceNotes || undefined,
+        turnaroundTime: offerId ? turnaroundTime : turnaroundTime || undefined,
+        requiresAppointment,
+        walkInAllowed,
+        ...(offerId ? { isAvailable } : {})
+      }),
+      cache: "no-store"
+    });
+  } catch {
+    return { error: "The API is unreachable. Check that the Nest server is running." };
+  }
+
+  if (!response.ok) {
+    return { error: await apiErrorMessage(response, `Could not ${offerId ? "update" : "create"} the offer.`) };
+  }
+
+  revalidatePath("/offers");
+  revalidatePath("/providers");
+  redirect("/offers");
+}
+
 export async function createProviderUserAction(
   _: AdminFormState,
   formData: FormData

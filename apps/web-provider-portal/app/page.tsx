@@ -9,17 +9,17 @@ export default async function ProviderHome() {
   const isProviderAdmin = session.user.role === "provider_admin";
   const actions = isProviderAdmin
     ? [
-        "Update locations and hours",
-        "Publish price changes",
-        "Manage provider users",
-        "Review last verification timestamps"
+        { title: "Update locations and hours", href: "/locations" },
+        { title: "Location test offers", href: "/offers" },
+        { title: "Manage provider users" },
+        { title: "Review last verification timestamps" }
       ]
     : [
-        "View organization profile",
-        "Review locations and hours",
-        "View prices and availability",
-        "Review provider users",
-        "Browse canonical tests"
+        { title: "View organization profile" },
+        { title: "Review locations and hours", href: "/locations" },
+        { title: "View prices and availability", href: "/offers" },
+        { title: "Review provider users" },
+        { title: "Browse canonical tests" }
       ];
 
   return (
@@ -58,16 +58,19 @@ export default async function ProviderHome() {
           </Link>
         ) : null}
 
-        {actions.map((action) => (
-          <article className="card" key={action}>
-            <h2>{action}</h2>
-            <p>
-              {isProviderAdmin
-                ? "Attach authenticated provider-admin forms here."
-                : "Read-only provider users can review this data once the UI flow is attached."}
-            </p>
-          </article>
-        ))}
+        {actions.map((action) =>
+          action.href ? (
+            <Link className="card card-link" href={action.href} key={action.title}>
+              <h2>{action.title}</h2>
+              <p>{isProviderAdmin ? "Open the authenticated management flow." : "Review scoped provider data."}</p>
+            </Link>
+          ) : (
+            <article className="card" key={action.title}>
+              <h2>{action.title}</h2>
+              <p>{isProviderAdmin ? "This management flow is not attached yet." : "This read-only flow is not attached yet."}</p>
+            </article>
+          )
+        )}
       </section>
     </main>
   );

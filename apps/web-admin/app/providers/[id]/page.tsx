@@ -270,7 +270,15 @@ export default async function ProviderDetailsPage({ params }: ProviderDetailsPag
                 </div>
 
                 <div className="snapshot-section">
-                  <h4>Location test offers</h4>
+                  <div className="provider-detail-header">
+                    <h4>Location test offers</h4>
+                    <Link
+                      className="secondary-button link-button"
+                      href={`/offers/new?providerId=${provider.id}&locationId=${location.id}`}
+                    >
+                      Add offer
+                    </Link>
+                  </div>
                   {location.offers.length === 0 ? (
                     <p className="section-copy">No offers recorded for this location.</p>
                   ) : (

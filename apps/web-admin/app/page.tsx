@@ -10,11 +10,13 @@ const cards = [
   },
   {
     title: "Canonical test catalog",
-    description: "Manage the shared tests that provider locations can attach offers to."
+    description: "Manage the shared tests that provider locations can attach offers to.",
+    href: "/tests"
   },
   {
     title: "Location test offers",
-    description: "Manage branch-specific test pricing, availability, and turnaround details."
+    description: "Manage branch-specific test pricing, availability, and turnaround details.",
+    href: "/offers"
   },
   {
     title: "Location payments and verification",
